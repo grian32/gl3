@@ -158,8 +158,44 @@ func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 			ExprInfo: checkedast.Info(checkedast.Float),
 			Value:    expr.Value,
 		}, true
+	case *parser.IdentifierExpression:
+		return c.findIdentifier(expr)
 	}
 	return nil, true
+}
+
+func (c *Checker) findIdentifier(identExpr *parser.IdentifierExpression) (checkedast.Expr, bool) {
+	identifier := identExpr.Value
+
+	for scope := c.currentScope; scope != nil; scope = scope.Parent {
+		s, ok := scope.Symbols[identifier]
+		if !ok {
+			continue
+		}
+
+		switch s := s.(type) {
+		case checkedast.LocalID:
+			return &checkedast.LocalRef{
+				ExprInfo: checkedast.ExprInfo{
+					ResultType: c.currentFunction.Locals[s].Type,
+				},
+				ID: s,
+			}, true
+		case checkedast.GlobalID:
+			return &checkedast.GlobalRef{
+				ExprInfo: checkedast.ExprInfo{
+					ResultType: c.globals[s].Type,
+				},
+				ID: s,
+			}, true
+		default:
+			c.appendDiagnostic(identExpr.Position(), "cannot use `%s` as a variable", identifier)
+			return nil, false
+		}
+	}
+
+	c.appendDiagnostic(identExpr.Position(), "unknown variable `%s`", identifier)
+	return nil, false
 }
 
 func (c *Checker) convertIntLiteral(expr *parser.IntegerLiteral, negative bool) (*checkedast.IntegerLiteral, bool) {

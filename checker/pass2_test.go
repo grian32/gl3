@@ -104,10 +104,10 @@ var pass2DiagnosticTests = []struct {
 	name, source string
 	diagnostics  []expectedDiagnostic
 }{
-	{name: "signed underflow", source: `fnc sample() -> int8 { return -129i8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"out of range", "int8"}, line: 1}}},
+	{name: "signed underflow", source: `fnc sample() -> int8 { return -129i8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int8"}, line: 1}}},
 	{name: "int64 overflow", source: `fnc sample() -> int { return 9223372036854775808 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int"}, line: 1}}},
-	{name: "int64 underflow", source: `fnc sample() -> int { return -9223372036854775809 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"out of range", "int"}, line: 1}}},
-	{name: "negative unsigned literal", source: `fnc sample() -> uint8 { return -1u8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"out of range", "uint8"}, line: 1}}},
+	{name: "int64 underflow", source: `fnc sample() -> int { return -9223372036854775809 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int"}, line: 1}}},
+	{name: "negative unsigned literal", source: `fnc sample() -> uint8 { return -1u8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Uint8"}, line: 1}}},
 	{name: "calling an opaque return function requires a sized value", source: `extern struct Handle
 extern fnc create() -> Handle
 fnc use() -> none { create() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 3}}},
