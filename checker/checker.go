@@ -132,9 +132,49 @@ func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 	case *parser.IntegerLiteral:
 		return c.convertIntLiteral(expr, false)
 	case *parser.PrefixExpression:
-		if _, ok := expr.Right.(*parser.IntegerLiteral); ok && expr.Operator == "-" {
-			return c.convertIntLiteral(expr.Right.(*parser.IntegerLiteral), true)
+		if expr.Operator == "-" {
+			switch right := expr.Right.(type) {
+			case *parser.IntegerLiteral:
+				return c.convertIntLiteral(right, true)
+			case *parser.FloatLiteral:
+				return &checkedast.FloatLiteral{
+					ExprInfo: checkedast.ExprInfo{
+						ResultType: checkedast.Type{
+							Base: checkedast.Float,
+						},
+					},
+					Value: -right.Value,
+				}, true
+			}
 		}
+	case *parser.BooleanExpression:
+		return &checkedast.BooleanLiteral{
+			ExprInfo: checkedast.ExprInfo{
+				ResultType: checkedast.Type{
+					Base: checkedast.Bool,
+				},
+			},
+			Value: expr.Value,
+		}, true
+	case *parser.StringLiteral:
+		return &checkedast.StringLiteral{
+			ExprInfo: checkedast.ExprInfo{
+				ResultType: checkedast.Type{
+					Base:    checkedast.Char,
+					Pointer: 1,
+				},
+			},
+			Value: expr.Value,
+		}, true
+	case *parser.FloatLiteral:
+		return &checkedast.FloatLiteral{
+			ExprInfo: checkedast.ExprInfo{
+				ResultType: checkedast.Type{
+					Base: checkedast.Float,
+				},
+			},
+			Value: expr.Value,
+		}, true
 	}
 	return nil, true
 }
