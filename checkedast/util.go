@@ -2,6 +2,14 @@ package checkedast
 
 import "gl3/lexer"
 
+func Info(base BaseType) ExprInfo {
+	return ExprInfo{ResultType: Type{Base: base}}
+}
+
+func InfoPtr(base BaseType, depth uint8) ExprInfo {
+	return ExprInfo{ResultType: Type{Base: base, Pointer: depth}}
+}
+
 func ConvertVarType(vt lexer.VarType, symbols map[string]Symbol) (Type, bool) {
 	if vt.IsStructType {
 		id, ok := symbols[vt.StructName].(StructID)

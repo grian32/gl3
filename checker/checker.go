@@ -138,42 +138,25 @@ func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 				return c.convertIntLiteral(right, true)
 			case *parser.FloatLiteral:
 				return &checkedast.FloatLiteral{
-					ExprInfo: checkedast.ExprInfo{
-						ResultType: checkedast.Type{
-							Base: checkedast.Float,
-						},
-					},
-					Value: -right.Value,
+					ExprInfo: checkedast.Info(checkedast.Float),
+					Value:    -right.Value,
 				}, true
 			}
 		}
 	case *parser.BooleanExpression:
 		return &checkedast.BooleanLiteral{
-			ExprInfo: checkedast.ExprInfo{
-				ResultType: checkedast.Type{
-					Base: checkedast.Bool,
-				},
-			},
-			Value: expr.Value,
+			ExprInfo: checkedast.Info(checkedast.Bool),
+			Value:    expr.Value,
 		}, true
 	case *parser.StringLiteral:
 		return &checkedast.StringLiteral{
-			ExprInfo: checkedast.ExprInfo{
-				ResultType: checkedast.Type{
-					Base:    checkedast.Char,
-					Pointer: 1,
-				},
-			},
-			Value: expr.Value,
+			ExprInfo: checkedast.InfoPtr(checkedast.Char, 1),
+			Value:    expr.Value,
 		}, true
 	case *parser.FloatLiteral:
 		return &checkedast.FloatLiteral{
-			ExprInfo: checkedast.ExprInfo{
-				ResultType: checkedast.Type{
-					Base: checkedast.Float,
-				},
-			},
-			Value: expr.Value,
+			ExprInfo: checkedast.Info(checkedast.Float),
+			Value:    expr.Value,
 		}, true
 	}
 	return nil, true
