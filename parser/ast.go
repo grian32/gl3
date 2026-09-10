@@ -89,8 +89,9 @@ func (es *ExpressionStatement) Position() *util.Position {
 }
 
 type IntegerLiteral struct {
-	Token  lexer.Token
-	Type   lexer.VarType
+	Token lexer.Token
+	Type  lexer.VarType
+	// Value get rid of once emitter is rewritten.
 	Value  int64
 	UValue uint64
 }
@@ -99,9 +100,8 @@ func (il *IntegerLiteral) expressionNode()      { /* noop */ }
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string {
 	switch il.Type.Base {
-	case lexer.Int8, lexer.Int16, lexer.Int32, lexer.Int:
-		return strconv.Itoa(int(il.Value)) + "(" + il.Type.String() + ")"
-	case lexer.Uint8, lexer.Uint16, lexer.Uint32, lexer.Uint:
+	case lexer.Int8, lexer.Int16, lexer.Int32, lexer.Int,
+		lexer.Uint8, lexer.Uint16, lexer.Uint32, lexer.Uint:
 		return strconv.FormatUint(il.UValue, 10) + "(" + il.Type.String() + ")"
 	}
 	return il.Token.Literal + "(" + il.Type.String() + ")"

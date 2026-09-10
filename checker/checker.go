@@ -130,51 +130,62 @@ func (c *Checker) checkStmt(stmt parser.Statement) (checkedast.Stmt, bool) {
 func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 	switch expr := expr.(type) {
 	case *parser.IntegerLiteral:
-		bt := checkedast.ConvertBaseType(expr.Type.Base)
-		if bt == checkedast.Invalid {
-			c.appendDiagnostic(expr.Position(), "invalid type on integer literal")
-			return nil, false
+		return c.convertIntLiteral(expr, false)
+	case *parser.PrefixExpression:
+		if _, ok := expr.Right.(*parser.IntegerLiteral); ok && expr.Operator == "-" {
+			return c.convertIntLiteral(expr.Right.(*parser.IntegerLiteral), true)
 		}
-		value := uint64(expr.Value)
-		signed := true
-		var bits uint8 = 64
-		switch expr.Type.Base {
-		case lexer.Int32:
-			bits = 32
-		case lexer.Int16:
-			bits = 16
-		case lexer.Int8:
-			bits = 8
-		case lexer.Uint:
-			signed = false
-			value = expr.UValue
-		case lexer.Uint32:
-			bits = 32
-			signed = false
-			value = expr.UValue
-		case lexer.Uint16:
-			bits = 16
-			signed = false
-			value = expr.UValue
-		case lexer.Uint8:
-			bits = 8
-			signed = false
-			value = expr.UValue
-		}
-
-		if !util.IntegerInRange(expr.UValue, false, bits, signed) {
-			c.appendDiagnostic(expr.Position(), "invalid value for literal of type %s", expr.Type.Base.String())
-			return nil, false
-		}
-
-		return &checkedast.IntegerLiteral{
-			ExprInfo: checkedast.ExprInfo{
-				ResultType: checkedast.Type{Base: bt},
-			},
-			Value: value,
-		}, true
 	}
 	return nil, true
+}
+
+func (c *Checker) convertIntLiteral(expr *parser.IntegerLiteral, negative bool) (*checkedast.IntegerLiteral, bool) {
+	bt := checkedast.ConvertBaseType(expr.Type.Base)
+	if bt == checkedast.Invalid {
+		c.appendDiagnostic(expr.Position(), "invalid type on integer literal")
+		return nil, false
+	}
+	value := expr.UValue
+	signed := true
+	var bits uint8 = 64
+	switch expr.Type.Base {
+	case lexer.Int32:
+		bits = 32
+	case lexer.Int16:
+		bits = 16
+	case lexer.Int8:
+		bits = 8
+	case lexer.Uint:
+		signed = false
+	case lexer.Uint32:
+		bits = 32
+		signed = false
+	case lexer.Uint16:
+		bits = 16
+		signed = false
+	case lexer.Uint8:
+		bits = 8
+		signed = false
+	}
+
+	if !util.IntegerInRange(expr.UValue, negative, bits, signed) {
+		c.appendDiagnostic(expr.Position(), "invalid value for literal of type %s", expr.Type.Base.String())
+		return nil, false
+	}
+
+	if negative {
+		value = -value
+	}
+	if bits < 64 {
+		value &= (uint64(1) << bits) - 1
+	}
+
+	return &checkedast.IntegerLiteral{
+		ExprInfo: checkedast.ExprInfo{
+			ResultType: checkedast.Type{Base: bt},
+		},
+		Value: value,
+	}, true
 }
 
 func (c *Checker) assignIDs(node parser.Node) bool {

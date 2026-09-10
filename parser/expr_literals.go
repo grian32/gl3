@@ -1,5 +1,7 @@
 package parser
 
+// GET RID OF LATER!
+
 import (
 	"gl3/lexer"
 	"strconv"
@@ -29,13 +31,11 @@ func (p *Parser) parseIntegerLiteral() Expression {
 
 	// could be more efficient by parsing based on type or the lack thereof but this makes for a decent chunk cleaner
 	// code
-	value, erri := strconv.ParseInt(p.currToken.Literal, 0, 64)
-	uvalue, erru := strconv.ParseUint(p.currToken.Literal, 0, 64)
-	if erri != nil && erru != nil {
-		p.appendError(&p.currToken.Position, "could not parse %q as unsigned/signed integer", p.currToken.Literal)
+	uvalue, err := strconv.ParseUint(p.currToken.Literal, 0, 64)
+	if err != nil {
+		p.appendError(&p.currToken.Position, "could not parse %q as integer", p.currToken.Literal)
 	}
 
-	lit.Value = value
 	lit.UValue = uvalue
 
 	p.NextToken()
@@ -88,7 +88,7 @@ func (p *Parser) parseFloatLiteral() Expression {
 
 func (p *Parser) parseCharLiteral() Expression {
 	vt := lexer.VarType{Base: lexer.Int8, Pointer: 0}
-	expr := &IntegerLiteral{Token: p.currToken, Value: int64(p.currToken.Literal[0]), Type: vt}
+	expr := &IntegerLiteral{Token: p.currToken, UValue: uint64(p.currToken.Literal[0]), Type: vt}
 	p.NextToken()
 	return expr
 }
