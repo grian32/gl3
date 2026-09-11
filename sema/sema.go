@@ -138,14 +138,25 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		}
 		return &hir.ExpressionStatement{Expr: expr}, true
 	case *parser.ReturnStatement:
+		retType := a.currentFunction.ReturnType
+
+		if stmt.Expr == nil {
+			if retType.Base != hir.Void || retType.Pointer != 0 {
+				a.appendDiagnostic(stmt.Position(), "return statement with no expression can only be used in functions with return type `none`")
+				return nil, false
+			} else {
+				return &hir.Return{Value: nil}, true
+			}
+		}
+
 		expr, ok := a.checkExpr(stmt.Expr)
 		if !ok {
 			return nil, false
 		}
 
-		retType := a.currentFunction.ReturnType
 		if expr.Type() != retType {
 			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type().String(), a.currentFunction.Name, retType.String())
+			return nil, false
 		}
 
 		return &hir.Return{Value: expr}, true

@@ -222,9 +222,17 @@ type ReturnStatement struct {
 
 func (rs *ReturnStatement) statementNode()       { /* noop */ }
 func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
-func (rs *ReturnStatement) String() string       { return "return " + rs.Expr.String() }
+func (rs *ReturnStatement) String() string {
+	if rs.Expr == nil {
+		return "return"
+	}
+	return "return " + rs.Expr.String()
+}
 func (rs *ReturnStatement) Position() *util.Position {
 	tokPos := rs.Token.Position
+	if rs.Expr == nil {
+		return &tokPos
+	}
 	exprPos := rs.Expr.Position()
 	return &util.Position{
 		StartLine: tokPos.StartLine,

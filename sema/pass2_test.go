@@ -104,6 +104,9 @@ var pass2DiagnosticTests = []struct {
 	name, source string
 	diagnostics  []expectedDiagnostic
 }{
+	{name: "bare return in value function", source: `fnc sample() -> int32 { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},
+	{name: "bare return in pointer function", source: `fnc sample() -> int32* { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},
+	{name: "bare return in none pointer function", source: `fnc sample() -> none* { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},
 	{name: "signed underflow", source: `fnc sample() -> int8 { return -129i8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int8"}, line: 1}}},
 	{name: "int64 overflow", source: `fnc sample() -> int { return 9223372036854775808 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int"}, line: 1}}},
 	{name: "int64 underflow", source: `fnc sample() -> int { return -9223372036854775809 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int"}, line: 1}}},
@@ -312,6 +315,21 @@ var pass2BodyTests = []struct {
 	locals       []ast.Local
 	body         []ast.Stmt
 }{
+	{
+		name:   "bare return in none function",
+		source: `fnc sample() -> none { return }`,
+		body:   []ast.Stmt{&ast.Return{Value: nil}},
+	},
+	{
+		name:   "bare return with semicolon",
+		source: `fnc sample() -> none { return; }`,
+		body:   []ast.Stmt{&ast.Return{Value: nil}},
+	},
+	{
+		name:   "return preserves value",
+		source: `fnc sample() -> int32 { return 7i32 }`,
+		body:   []ast.Stmt{&ast.Return{Value: &ast.IntegerLiteral{ExprInfo: ast.Info(ast.Int32), Value: 7}}},
+	},
 	{name: "if else returns", source: `fnc sample(bool x) -> int32 { if x { return 1i32 } else { return 2i32 } }`, locals: []ast.Local{{Name: "x", Type: ast.Type{Base: ast.Bool}}}, body: []ast.Stmt{&ast.If{Condition: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 0}, Then: ast.Block{Statements: []ast.Stmt{&ast.Return{Value: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}}}}, Else: &ast.Block{Statements: []ast.Stmt{&ast.Return{Value: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}}}}}}},
 	{name: "while break", source: `fnc sample() -> int32 { while true { break } return 0i32 }`, locals: []ast.Local{}, body: []ast.Stmt{&ast.While{Condition: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}, Body: ast.Block{Statements: []ast.Stmt{&ast.Break{}}}}, &ast.Return{Value: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 0}}}},
 	{name: "while continue", source: `fnc sample() -> int32 { while false { continue } return 0i32 }`, locals: []ast.Local{}, body: []ast.Stmt{&ast.While{Condition: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: false}, Body: ast.Block{Statements: []ast.Stmt{&ast.Continue{}}}}, &ast.Return{Value: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 0}}}},

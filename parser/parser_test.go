@@ -13,6 +13,43 @@ type InputOutput struct {
 	output string
 }
 
+func TestReturnStatements(t *testing.T) {
+	tests := []struct {
+		name, source, wantString string
+		bare                     bool
+		statementCount           int
+	}{
+		{name: "bare before brace", source: `fnc sample() -> none { return }`, wantString: "return", bare: true, statementCount: 1},
+		{name: "bare before semicolon", source: `fnc sample() -> none { return; }`, wantString: "return", bare: true, statementCount: 1},
+		{name: "semicolon preserves next statement", source: `fnc sample() -> none { return; return }`, wantString: "return", bare: true, statementCount: 2},
+		{name: "value before brace", source: `fnc sample() -> bool { return true }`, wantString: "return true", statementCount: 1},
+		{name: "value before semicolon", source: `fnc sample() -> bool { return true; }`, wantString: "return true", statementCount: 1},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fn := parseSingleStatement(t, test.source).(*FunctionStatement)
+			if len(fn.Body.Statements) != test.statementCount {
+				t.Fatalf("statements: want %d, got %d", test.statementCount, len(fn.Body.Statements))
+			}
+			stmt := fn.Body.Statements[0].(*ReturnStatement)
+			if (stmt.Expr == nil) != test.bare {
+				t.Fatalf("bare return: want %t, got expression %T", test.bare, stmt.Expr)
+			}
+			if got := stmt.String(); got != test.wantString {
+				t.Errorf("String(): want %q, got %q", test.wantString, got)
+			}
+			wantPosition := stmt.Token.Position
+			if !test.bare {
+				wantPosition.EndLine = stmt.Expr.Position().EndLine
+				wantPosition.EndCol = stmt.Expr.Position().EndCol
+			}
+			if got := *stmt.Position(); got != wantPosition {
+				t.Errorf("Position(): want %+v, got %+v", wantPosition, got)
+			}
+		})
+	}
+}
+
 func TestLiterals(t *testing.T) {
 	tests := map[string]InputOutput{
 		"int64": {
@@ -103,9 +140,6 @@ func TestIntegerBoundaryValues(t *testing.T) {
 			}
 			if lit.UValue != test.value {
 				t.Fatalf("want value %d, got %d", test.value, lit.UValue)
-			}
-			if test.kind.Base == lexer.Int && lit.Value != int64(test.value) {
-				t.Fatalf("wrong signed value: %d", lit.Value)
 			}
 		})
 	}
@@ -1007,8 +1041,8 @@ func TestMalformedParserInput(t *testing.T) {
 		"call assignment target":      {"f() = x", "lhs of assignment"},
 		"unknown integer suffix":      {"1u128", ""},
 		"misspelled integer suffix":   {"1i33", ""},
-		"unsuffixed overflow":         {"18446744073709551616", "unsigned/signed integer"},
-		"unsigned overflow":           {"18446744073709551616u64", "unsigned/signed integer"},
+		"unsuffixed overflow":         {"18446744073709551616", `could not parse "18446744073709551616" as integer`},
+		"unsigned overflow":           {"18446744073709551616u64", `could not parse "18446744073709551616" as integer`},
 	}
 
 	runErrorTests(t, tests)

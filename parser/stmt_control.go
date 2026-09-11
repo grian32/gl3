@@ -45,6 +45,11 @@ func (p *Parser) parseIfStatement() Statement {
 func (p *Parser) parseReturnStatement() Statement {
 	stmt := &ReturnStatement{Token: p.currToken}
 	p.NextToken()
+	// kind of a hack? but cant think of a better way lol
+	if p.currTokenIs(lexer.RBRACE) ||
+		p.currTokenIs(lexer.SEMICOLON) {
+		return stmt
+	}
 	expr := p.parseExpression(LOWEST)
 	stmt.Expr = expr
 	return stmt

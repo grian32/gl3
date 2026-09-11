@@ -327,6 +327,12 @@ Functions use the `fnc` keyword. Return type is always required.
 - Functions returning `none` receive an implicit return
 - All other functions require an explicit `return` statement
 
+Functions returning `none` also allow an explicit bare `return` with no value.
+Use `return;` when another statement follows; a newline alone does not end the
+return statement. The semicolon is optional immediately before `}`.
+Functions returning a value, including pointer types such as `none*`, require
+a return expression matching their declared return type.
+
 ```gl3
 fnc add(int32 a, int32 b) -> int32 {
     return a + b
@@ -334,6 +340,10 @@ fnc add(int32 a, int32 b) -> int32 {
 
 fnc greet() -> none {
     // implicit return
+}
+
+fnc finish() -> none {
+    return
 }
 
 fnc main() -> int32 {
