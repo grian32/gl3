@@ -1,6 +1,45 @@
 package hir
 
-import "gl3/lexer"
+import (
+	"gl3/lexer"
+	"strconv"
+	"strings"
+)
+
+func (t Type) String() string {
+	var name string
+	switch t.Base {
+	case Int:
+		name = "int"
+	case Int32:
+		name = "int32"
+	case Int16:
+		name = "int16"
+	case Int8:
+		name = "int8"
+	case Char:
+		name = "char"
+	case Uint:
+		name = "uint"
+	case Uint32:
+		name = "uint32"
+	case Uint16:
+		name = "uint16"
+	case Uint8:
+		name = "uint8"
+	case Bool:
+		name = "bool"
+	case Void:
+		name = "none"
+	case Float:
+		name = "float"
+	case StructType:
+		name = "struct#" + strconv.FormatUint(uint64(t.Struct), 10)
+	default:
+		name = "invalid"
+	}
+	return name + strings.Repeat("*", int(t.Pointer))
+}
 
 func Info(base BaseType) ExprInfo {
 	return ExprInfo{ResultType: Type{Base: base}}
