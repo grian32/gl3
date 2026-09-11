@@ -1,7 +1,7 @@
-package checker
+package sema
 
 import (
-	"gl3/checkedast"
+	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
 	"reflect"
@@ -17,8 +17,8 @@ type expectedDiagnostic struct {
 var declarationTests = []struct {
 	name        string
 	source      string
-	want        checkedast.Program
-	symbols     map[string]checkedast.Symbol
+	want        hir.Program
+	symbols     map[string]hir.Symbol
 	diagnostics []expectedDiagnostic
 }{
 	{
@@ -27,13 +27,13 @@ var declarationTests = []struct {
 struct Inner { Handle handle }
 struct PointerHolder { Outer* value }
 extern struct Handle`,
-		want: checkedast.Program{Structs: []checkedast.Struct{
-			{Name: "Outer", Id: 0, Unsized: true, Fields: []checkedast.TypedName{{Name: "inner", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1}}}, FieldNames: map[string]int{"inner": 0}},
-			{Name: "Inner", Id: 1, Unsized: true, Fields: []checkedast.TypedName{{Name: "handle", Type: checkedast.Type{Base: checkedast.StructType, Struct: 3}}}, FieldNames: map[string]int{"handle": 0}},
-			{Name: "PointerHolder", Id: 2, Unsized: false, Fields: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.StructType, Struct: 0, Pointer: 1}}}, FieldNames: map[string]int{"value": 0}},
+		want: hir.Program{Structs: []hir.Struct{
+			{Name: "Outer", Id: 0, Unsized: true, Fields: []hir.TypedName{{Name: "inner", Type: hir.Type{Base: hir.StructType, Struct: 1}}}, FieldNames: map[string]int{"inner": 0}},
+			{Name: "Inner", Id: 1, Unsized: true, Fields: []hir.TypedName{{Name: "handle", Type: hir.Type{Base: hir.StructType, Struct: 3}}}, FieldNames: map[string]int{"handle": 0}},
+			{Name: "PointerHolder", Id: 2, Unsized: false, Fields: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.StructType, Struct: 0, Pointer: 1}}}, FieldNames: map[string]int{"value": 0}},
 			{Name: "Handle", Id: 3, Opaque: true, Unsized: true},
 		}},
-		symbols: map[string]checkedast.Symbol{"Outer": checkedast.StructID(0), "Inner": checkedast.StructID(1), "PointerHolder": checkedast.StructID(2), "Handle": checkedast.StructID(3)},
+		symbols: map[string]hir.Symbol{"Outer": hir.StructID(0), "Inner": hir.StructID(1), "PointerHolder": hir.StructID(2), "Handle": hir.StructID(3)},
 	},
 
 	{name: "unsized nested parameter", source: `extern struct Handle
@@ -63,23 +63,23 @@ struct Second { First next }
 fnc create() -> First {}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"size", "create"}, line: 3}}},
 	{name: "privacy of functions", source: `fnc publicBefore() -> none {}
 private fnc hidden() -> none {}
-fnc publicAfter() -> none {}`, want: checkedast.Program{Functions: []checkedast.Function{{Name: "publicBefore", Id: 0, Private: false, External: false, ReturnType: checkedast.Type{Base: checkedast.Void}}, {Name: "hidden", Id: 1, Private: true, External: false, ReturnType: checkedast.Type{Base: checkedast.Void}}, {Name: "publicAfter", Id: 2, Private: false, External: false, ReturnType: checkedast.Type{Base: checkedast.Void}}}}, symbols: map[string]checkedast.Symbol{"publicBefore": checkedast.FunctionID(0), "hidden": checkedast.FunctionID(1), "publicAfter": checkedast.FunctionID(2)}},
+fnc publicAfter() -> none {}`, want: hir.Program{Functions: []hir.Function{{Name: "publicBefore", Id: 0, Private: false, External: false, ReturnType: hir.Type{Base: hir.Void}}, {Name: "hidden", Id: 1, Private: true, External: false, ReturnType: hir.Type{Base: hir.Void}}, {Name: "publicAfter", Id: 2, Private: false, External: false, ReturnType: hir.Type{Base: hir.Void}}}}, symbols: map[string]hir.Symbol{"publicBefore": hir.FunctionID(0), "hidden": hir.FunctionID(1), "publicAfter": hir.FunctionID(2)}},
 	{name: "privacy of extern functions", source: `extern fnc publicBefore() -> none
 private extern fnc hidden() -> none
-extern fnc publicAfter() -> none`, want: checkedast.Program{Functions: []checkedast.Function{{Name: "publicBefore", Id: 0, Private: false, External: true, ReturnType: checkedast.Type{Base: checkedast.Void}}, {Name: "hidden", Id: 1, Private: true, External: true, ReturnType: checkedast.Type{Base: checkedast.Void}}, {Name: "publicAfter", Id: 2, Private: false, External: true, ReturnType: checkedast.Type{Base: checkedast.Void}}}}, symbols: map[string]checkedast.Symbol{"publicBefore": checkedast.FunctionID(0), "hidden": checkedast.FunctionID(1), "publicAfter": checkedast.FunctionID(2)}},
+extern fnc publicAfter() -> none`, want: hir.Program{Functions: []hir.Function{{Name: "publicBefore", Id: 0, Private: false, External: true, ReturnType: hir.Type{Base: hir.Void}}, {Name: "hidden", Id: 1, Private: true, External: true, ReturnType: hir.Type{Base: hir.Void}}, {Name: "publicAfter", Id: 2, Private: false, External: true, ReturnType: hir.Type{Base: hir.Void}}}}, symbols: map[string]hir.Symbol{"publicBefore": hir.FunctionID(0), "hidden": hir.FunctionID(1), "publicAfter": hir.FunctionID(2)}},
 	{
 		name: "privacy of extern structs does not leak to regular structs",
 		source: `extern struct PublicBefore
 private extern struct Hidden
 struct Regular { int32 value }
 extern struct PublicAfter`,
-		want: checkedast.Program{Structs: []checkedast.Struct{
+		want: hir.Program{Structs: []hir.Struct{
 			{Name: "PublicBefore", Id: 0, Opaque: true, Unsized: true, Private: false},
 			{Name: "Hidden", Id: 1, Opaque: true, Unsized: true, Private: true},
-			{Name: "Regular", Id: 2, Opaque: false, Private: false, Fields: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, FieldNames: map[string]int{"value": 0}},
+			{Name: "Regular", Id: 2, Opaque: false, Private: false, Fields: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, FieldNames: map[string]int{"value": 0}},
 			{Name: "PublicAfter", Id: 3, Opaque: true, Unsized: true, Private: false},
 		}},
-		symbols: map[string]checkedast.Symbol{"PublicBefore": checkedast.StructID(0), "Hidden": checkedast.StructID(1), "Regular": checkedast.StructID(2), "PublicAfter": checkedast.StructID(3)},
+		symbols: map[string]hir.Symbol{"PublicBefore": hir.StructID(0), "Hidden": hir.StructID(1), "Regular": hir.StructID(2), "PublicAfter": hir.StructID(3)},
 	},
 
 	{name: "empty"},
@@ -121,26 +121,26 @@ extern struct PublicAfter`,
 fnc consume(none** pointer) -> none { }
 fnc produce() -> none* { return 0 as none* }
 global none* handle = 0 as none*`,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{
+		want: hir.Program{
+			Structs: []hir.Struct{
 				{Name: "Handle", Id: 0,
-					Fields:     []checkedast.TypedName{{Name: "pointer", Type: checkedast.Type{Base: checkedast.Void, Pointer: 1}}},
+					Fields:     []hir.TypedName{{Name: "pointer", Type: hir.Type{Base: hir.Void, Pointer: 1}}},
 					FieldNames: map[string]int{"pointer": 0}},
 			},
-			Functions: []checkedast.Function{
+			Functions: []hir.Function{
 				{Name: "consume", Id: 0,
-					Parameters:     []checkedast.TypedName{{Name: "pointer", Type: checkedast.Type{Base: checkedast.Void, Pointer: 2}}},
+					Parameters:     []hir.TypedName{{Name: "pointer", Type: hir.Type{Base: hir.Void, Pointer: 2}}},
 					ParameterNames: map[string]int{"pointer": 0},
-					ReturnType:     checkedast.Type{Base: checkedast.Void}},
-				{Name: "produce", Id: 1, ReturnType: checkedast.Type{Base: checkedast.Void, Pointer: 1}},
+					ReturnType:     hir.Type{Base: hir.Void}},
+				{Name: "produce", Id: 1, ReturnType: hir.Type{Base: hir.Void, Pointer: 1}},
 			},
-			Globals: []checkedast.Global{
-				{Name: "handle", Id: 0, Type: checkedast.Type{Base: checkedast.Void, Pointer: 1}},
+			Globals: []hir.Global{
+				{Name: "handle", Id: 0, Type: hir.Type{Base: hir.Void, Pointer: 1}},
 			},
 		},
-		symbols: map[string]checkedast.Symbol{
-			"Handle": checkedast.StructID(0), "consume": checkedast.FunctionID(0),
-			"produce": checkedast.FunctionID(1), "handle": checkedast.GlobalID(0),
+		symbols: map[string]hir.Symbol{
+			"Handle": hir.StructID(0), "consume": hir.FunctionID(0),
+			"produce": hir.FunctionID(1), "handle": hir.GlobalID(0),
 		},
 	},
 	{
@@ -163,24 +163,24 @@ private fnc beta(int32 input) -> int32 {
     return local
 }
 `,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{
-				{Name: "First", Id: 0, Fields: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, FieldNames: map[string]int{"value": 0}},
-				{Name: "Second", Id: 1, Fields: []checkedast.TypedName{{Name: "previous", Type: checkedast.Type{Base: checkedast.StructType, Struct: 0, Pointer: 1}}}, FieldNames: map[string]int{"previous": 0}},
+		want: hir.Program{
+			Structs: []hir.Struct{
+				{Name: "First", Id: 0, Fields: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, FieldNames: map[string]int{"value": 0}},
+				{Name: "Second", Id: 1, Fields: []hir.TypedName{{Name: "previous", Type: hir.Type{Base: hir.StructType, Struct: 0, Pointer: 1}}}, FieldNames: map[string]int{"previous": 0}},
 			},
-			Functions: []checkedast.Function{
-				{Name: "alpha", Id: 0, ReturnType: checkedast.Type{Base: checkedast.Int32}},
-				{Name: "beta", Id: 1, Private: true, Parameters: []checkedast.TypedName{{Name: "input", Type: checkedast.Type{Base: checkedast.Int32}}}, ParameterNames: map[string]int{"input": 0}, ReturnType: checkedast.Type{Base: checkedast.Int32}},
+			Functions: []hir.Function{
+				{Name: "alpha", Id: 0, ReturnType: hir.Type{Base: hir.Int32}},
+				{Name: "beta", Id: 1, Private: true, Parameters: []hir.TypedName{{Name: "input", Type: hir.Type{Base: hir.Int32}}}, ParameterNames: map[string]int{"input": 0}, ReturnType: hir.Type{Base: hir.Int32}},
 			},
-			Globals: []checkedast.Global{
-				{Name: "first", Id: 0, Constant: false, Type: checkedast.Type{Base: checkedast.Int32}},
-				{Name: "second", Id: 1, Constant: true, Type: checkedast.Type{Base: checkedast.Int32}},
+			Globals: []hir.Global{
+				{Name: "first", Id: 0, Constant: false, Type: hir.Type{Base: hir.Int32}},
+				{Name: "second", Id: 1, Constant: true, Type: hir.Type{Base: hir.Int32}},
 			},
 		},
-		symbols: map[string]checkedast.Symbol{
-			"First": checkedast.StructID(0), "Second": checkedast.StructID(1),
-			"alpha": checkedast.FunctionID(0), "beta": checkedast.FunctionID(1),
-			"first": checkedast.GlobalID(0), "second": checkedast.GlobalID(1),
+		symbols: map[string]hir.Symbol{
+			"First": hir.StructID(0), "Second": hir.StructID(1),
+			"alpha": hir.FunctionID(0), "beta": hir.FunctionID(1),
+			"first": hir.GlobalID(0), "second": hir.GlobalID(1),
 		},
 	},
 	{
@@ -192,11 +192,11 @@ fnc probe(int32 parameter) -> int32 {
     return inside
 }
 `,
-		want: checkedast.Program{
-			Functions: []checkedast.Function{{Name: "probe", Id: 0, Parameters: []checkedast.TypedName{{Name: "parameter", Type: checkedast.Type{Base: checkedast.Int32}}}, ParameterNames: map[string]int{"parameter": 0}, ReturnType: checkedast.Type{Base: checkedast.Int32}}},
+		want: hir.Program{
+			Functions: []hir.Function{{Name: "probe", Id: 0, Parameters: []hir.TypedName{{Name: "parameter", Type: hir.Type{Base: hir.Int32}}}, ParameterNames: map[string]int{"parameter": 0}, ReturnType: hir.Type{Base: hir.Int32}}},
 		},
-		symbols: map[string]checkedast.Symbol{
-			"probe": checkedast.FunctionID(0),
+		symbols: map[string]hir.Symbol{
+			"probe": hir.FunctionID(0),
 		},
 	},
 	{
@@ -207,48 +207,48 @@ global const uint8 limit = 7u8
 struct Container { Node* z float a char** text }
 struct Node { int32 value Node* next }
 fnc idle() -> none { }`,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{
+		want: hir.Program{
+			Structs: []hir.Struct{
 				{
 					Name: "Container", Id: 0,
-					Fields: []checkedast.TypedName{
-						{Name: "z", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}},
-						{Name: "a", Type: checkedast.Type{Base: checkedast.Float}},
-						{Name: "text", Type: checkedast.Type{Base: checkedast.Char, Pointer: 2}},
+					Fields: []hir.TypedName{
+						{Name: "z", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}},
+						{Name: "a", Type: hir.Type{Base: hir.Float}},
+						{Name: "text", Type: hir.Type{Base: hir.Char, Pointer: 2}},
 					},
 					FieldNames: map[string]int{"z": 0, "a": 1, "text": 2},
 				},
 				{
 					Name: "Node", Id: 1,
-					Fields: []checkedast.TypedName{
-						{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}},
-						{Name: "next", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}},
+					Fields: []hir.TypedName{
+						{Name: "value", Type: hir.Type{Base: hir.Int32}},
+						{Name: "next", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}},
 					},
 					FieldNames: map[string]int{"value": 0, "next": 1},
 				},
 			},
-			Functions: []checkedast.Function{
+			Functions: []hir.Function{
 				{
 					Name: "selectNode", Id: 0,
-					Parameters: []checkedast.TypedName{
-						{Name: "z", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 2}},
-						{Name: "a", Type: checkedast.Type{Base: checkedast.Uint8}},
-						{Name: "ready", Type: checkedast.Type{Base: checkedast.Bool}},
+					Parameters: []hir.TypedName{
+						{Name: "z", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 2}},
+						{Name: "a", Type: hir.Type{Base: hir.Uint8}},
+						{Name: "ready", Type: hir.Type{Base: hir.Bool}},
 					},
 					ParameterNames: map[string]int{"z": 0, "a": 1, "ready": 2},
-					ReturnType:     checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1},
+					ReturnType:     hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1},
 				},
-				{Name: "idle", Id: 1, ReturnType: checkedast.Type{Base: checkedast.Void}},
+				{Name: "idle", Id: 1, ReturnType: hir.Type{Base: hir.Void}},
 			},
-			Globals: []checkedast.Global{
-				{Name: "head", Id: 0, Constant: false, Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}},
-				{Name: "limit", Id: 1, Constant: true, Type: checkedast.Type{Base: checkedast.Uint8}},
+			Globals: []hir.Global{
+				{Name: "head", Id: 0, Constant: false, Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}},
+				{Name: "limit", Id: 1, Constant: true, Type: hir.Type{Base: hir.Uint8}},
 			},
 		},
-		symbols: map[string]checkedast.Symbol{
-			"Container": checkedast.StructID(0), "Node": checkedast.StructID(1),
-			"selectNode": checkedast.FunctionID(0), "idle": checkedast.FunctionID(1),
-			"head": checkedast.GlobalID(0), "limit": checkedast.GlobalID(1),
+		symbols: map[string]hir.Symbol{
+			"Container": hir.StructID(0), "Node": hir.StructID(1),
+			"selectNode": hir.FunctionID(0), "idle": hir.FunctionID(1),
+			"head": hir.GlobalID(0), "limit": hir.GlobalID(1),
 		},
 	},
 	{
@@ -258,20 +258,20 @@ struct Left { int32 value }
 struct Right { int32 value }
 fnc first(int32 value) -> int32 { return value }
 fnc second(int32 value) -> int32 { return value }`,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{
-				{Name: "Left", Id: 0, Fields: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, FieldNames: map[string]int{"value": 0}},
-				{Name: "Right", Id: 1, Fields: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, FieldNames: map[string]int{"value": 0}},
+		want: hir.Program{
+			Structs: []hir.Struct{
+				{Name: "Left", Id: 0, Fields: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, FieldNames: map[string]int{"value": 0}},
+				{Name: "Right", Id: 1, Fields: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, FieldNames: map[string]int{"value": 0}},
 			},
-			Functions: []checkedast.Function{
-				{Name: "first", Id: 0, Parameters: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, ParameterNames: map[string]int{"value": 0}, ReturnType: checkedast.Type{Base: checkedast.Int32}},
-				{Name: "second", Id: 1, Parameters: []checkedast.TypedName{{Name: "value", Type: checkedast.Type{Base: checkedast.Int32}}}, ParameterNames: map[string]int{"value": 0}, ReturnType: checkedast.Type{Base: checkedast.Int32}},
+			Functions: []hir.Function{
+				{Name: "first", Id: 0, Parameters: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, ParameterNames: map[string]int{"value": 0}, ReturnType: hir.Type{Base: hir.Int32}},
+				{Name: "second", Id: 1, Parameters: []hir.TypedName{{Name: "value", Type: hir.Type{Base: hir.Int32}}}, ParameterNames: map[string]int{"value": 0}, ReturnType: hir.Type{Base: hir.Int32}},
 			},
-			Globals: []checkedast.Global{{Name: "value", Id: 0, Constant: false, Type: checkedast.Type{Base: checkedast.Int32}}},
+			Globals: []hir.Global{{Name: "value", Id: 0, Constant: false, Type: hir.Type{Base: hir.Int32}}},
 		},
-		symbols: map[string]checkedast.Symbol{
-			"value": checkedast.GlobalID(0), "Left": checkedast.StructID(0), "Right": checkedast.StructID(1),
-			"first": checkedast.FunctionID(0), "second": checkedast.FunctionID(1),
+		symbols: map[string]hir.Symbol{
+			"value": hir.GlobalID(0), "Left": hir.StructID(0), "Right": hir.StructID(1),
+			"first": hir.FunctionID(0), "second": hir.FunctionID(1),
 		},
 	},
 	{
@@ -380,12 +380,12 @@ global int32 counter = 1i32`,
 }
 
 // These cases check declaration metadata; pass 2 cases check executable output.
-func TestCheckProgram(t *testing.T) {
+func TestAnalyze(t *testing.T) {
 	for _, test := range declarationTests {
 		t.Run(test.name, func(t *testing.T) {
 			program := parseDeclarations(t, test.source)
-			c := NewChecker()
-			got, diagnostics := c.CheckProgram(program)
+			c := New()
+			got, diagnostics := c.Analyze(program)
 
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 			if len(test.diagnostics) != 0 {
@@ -408,17 +408,17 @@ func parseDeclarations(t *testing.T, source string) *parser.Program {
 	return program
 }
 
-func assertDeclarationMetadata(t *testing.T, got, want *checkedast.Program) {
+func assertDeclarationMetadata(t *testing.T, got, want *hir.Program) {
 	t.Helper()
 	if got == nil {
-		t.Fatal("CheckProgram returned nil")
+		t.Fatal("Analyze returned nil")
 	}
 	metadata := *got
-	metadata.Functions = append([]checkedast.Function(nil), got.Functions...)
-	metadata.Globals = append([]checkedast.Global(nil), got.Globals...)
+	metadata.Functions = append([]hir.Function(nil), got.Functions...)
+	metadata.Globals = append([]hir.Global(nil), got.Globals...)
 	for i := range metadata.Functions {
 		metadata.Functions[i].Locals = nil
-		metadata.Functions[i].Body = checkedast.Block{}
+		metadata.Functions[i].Body = hir.Block{}
 	}
 	for i := range metadata.Globals {
 		metadata.Globals[i].Initializer = nil
@@ -426,10 +426,10 @@ func assertDeclarationMetadata(t *testing.T, got, want *checkedast.Program) {
 	assertDeclarations(t, &metadata, want)
 }
 
-func assertDeclarations(t *testing.T, got, want *checkedast.Program) {
+func assertDeclarations(t *testing.T, got, want *hir.Program) {
 	t.Helper()
 	if got == nil {
-		t.Fatal("CheckProgram returned nil")
+		t.Fatal("Analyze returned nil")
 	}
 	assertSlice(t, "structs", got.Structs, want.Structs)
 	assertSlice(t, "functions", got.Functions, want.Functions)
@@ -451,7 +451,7 @@ func assertSlice[T any](t *testing.T, name string, got, want []T) {
 // Normalize copies, leaving the actual output and fixture data unchanged.
 func normalizeEmptyCollections(declaration any) any {
 	switch node := declaration.(type) {
-	case checkedast.Struct:
+	case hir.Struct:
 		if len(node.Fields) == 0 {
 			node.Fields = nil
 		}
@@ -459,7 +459,7 @@ func normalizeEmptyCollections(declaration any) any {
 			node.FieldNames = nil
 		}
 		return node
-	case checkedast.Function:
+	case hir.Function:
 		if len(node.Locals) == 0 {
 			node.Locals = nil
 		}
@@ -478,7 +478,7 @@ func normalizeEmptyCollections(declaration any) any {
 	}
 }
 
-func assertSymbols(t *testing.T, got, want map[string]checkedast.Symbol) {
+func assertSymbols(t *testing.T, got, want map[string]hir.Symbol) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Errorf("symbols: want %v, got %v", want, got)
@@ -527,29 +527,29 @@ func assertDiagnostics(t *testing.T, got []Diagnostic, want []expectedDiagnostic
 
 var externDeclarationTests = []struct {
 	name, source string
-	want         checkedast.Program
-	symbols      map[string]checkedast.Symbol
+	want         hir.Program
+	symbols      map[string]hir.Symbol
 	diagnostics  []expectedDiagnostic
 }{
 	{
 		name:   "extern function signature and privacy",
 		source: `private extern fnc read(int32 count, char* buffer) -> int32`,
-		want: checkedast.Program{Functions: []checkedast.Function{{
+		want: hir.Program{Functions: []hir.Function{{
 			Name: "read", Id: 0, Private: true, External: true,
-			Parameters: []checkedast.TypedName{
-				{Name: "count", Type: checkedast.Type{Base: checkedast.Int32}},
-				{Name: "buffer", Type: checkedast.Type{Base: checkedast.Char, Pointer: 1}},
+			Parameters: []hir.TypedName{
+				{Name: "count", Type: hir.Type{Base: hir.Int32}},
+				{Name: "buffer", Type: hir.Type{Base: hir.Char, Pointer: 1}},
 			},
 			ParameterNames: map[string]int{"count": 0, "buffer": 1},
-			ReturnType:     checkedast.Type{Base: checkedast.Int32},
+			ReturnType:     hir.Type{Base: hir.Int32},
 		}}},
-		symbols: map[string]checkedast.Symbol{"read": checkedast.FunctionID(0)},
+		symbols: map[string]hir.Symbol{"read": hir.FunctionID(0)},
 	},
 	{
 		name:    "extern void function without parameters",
 		source:  `extern fnc release() -> none`,
-		want:    checkedast.Program{Functions: []checkedast.Function{{Name: "release", Id: 0, External: true, ReturnType: checkedast.Type{Base: checkedast.Void}}}},
-		symbols: map[string]checkedast.Symbol{"release": checkedast.FunctionID(0)},
+		want:    hir.Program{Functions: []hir.Function{{Name: "release", Id: 0, External: true, ReturnType: hir.Type{Base: hir.Void}}}},
+		symbols: map[string]hir.Symbol{"release": hir.FunctionID(0)},
 	},
 	{
 		name: "extern structs and functions share declaration ID tables",
@@ -559,15 +559,15 @@ extern struct Handle
 extern fnc open() -> Handle*
 extern struct Other
 extern fnc close(Handle* handle) -> none`,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{{Name: "First", Id: 0}, {Name: "Handle", Id: 1, Opaque: true, Unsized: true}, {Name: "Other", Id: 2, Opaque: true, Unsized: true}},
-			Functions: []checkedast.Function{
-				{Name: "first", Id: 0, ReturnType: checkedast.Type{Base: checkedast.Void}},
-				{Name: "open", Id: 1, External: true, ReturnType: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}},
-				{Name: "close", Id: 2, External: true, ReturnType: checkedast.Type{Base: checkedast.Void}, Parameters: []checkedast.TypedName{{Name: "handle", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}}}, ParameterNames: map[string]int{"handle": 0}},
+		want: hir.Program{
+			Structs: []hir.Struct{{Name: "First", Id: 0}, {Name: "Handle", Id: 1, Opaque: true, Unsized: true}, {Name: "Other", Id: 2, Opaque: true, Unsized: true}},
+			Functions: []hir.Function{
+				{Name: "first", Id: 0, ReturnType: hir.Type{Base: hir.Void}},
+				{Name: "open", Id: 1, External: true, ReturnType: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}},
+				{Name: "close", Id: 2, External: true, ReturnType: hir.Type{Base: hir.Void}, Parameters: []hir.TypedName{{Name: "handle", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}}}, ParameterNames: map[string]int{"handle": 0}},
 			},
 		},
-		symbols: map[string]checkedast.Symbol{"First": checkedast.StructID(0), "Handle": checkedast.StructID(1), "Other": checkedast.StructID(2), "first": checkedast.FunctionID(0), "open": checkedast.FunctionID(1), "close": checkedast.FunctionID(2)},
+		symbols: map[string]hir.Symbol{"First": hir.StructID(0), "Handle": hir.StructID(1), "Other": hir.StructID(2), "first": hir.FunctionID(0), "open": hir.FunctionID(1), "close": hir.FunctionID(2)},
 	},
 	{
 		name: "forward opaque pointers in fields signatures and globals",
@@ -575,15 +575,15 @@ extern fnc close(Handle* handle) -> none`,
 struct Wrapper { Handle* handle }
 global Handle* handle = 0 as Handle*
 extern struct Handle`,
-		want: checkedast.Program{
-			Structs: []checkedast.Struct{
-				{Name: "Wrapper", Id: 0, Fields: []checkedast.TypedName{{Name: "handle", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}}}, FieldNames: map[string]int{"handle": 0}},
+		want: hir.Program{
+			Structs: []hir.Struct{
+				{Name: "Wrapper", Id: 0, Fields: []hir.TypedName{{Name: "handle", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}}}, FieldNames: map[string]int{"handle": 0}},
 				{Name: "Handle", Id: 1, Opaque: true, Unsized: true},
 			},
-			Functions: []checkedast.Function{{Name: "lookup", Id: 0, External: true, Parameters: []checkedast.TypedName{{Name: "handles", Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 2}}}, ParameterNames: map[string]int{"handles": 0}, ReturnType: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}}},
-			Globals:   []checkedast.Global{{Name: "handle", Id: 0, Type: checkedast.Type{Base: checkedast.StructType, Struct: 1, Pointer: 1}}},
+			Functions: []hir.Function{{Name: "lookup", Id: 0, External: true, Parameters: []hir.TypedName{{Name: "handles", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 2}}}, ParameterNames: map[string]int{"handles": 0}, ReturnType: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}}},
+			Globals:   []hir.Global{{Name: "handle", Id: 0, Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}}},
 		},
-		symbols: map[string]checkedast.Symbol{"lookup": checkedast.FunctionID(0), "Wrapper": checkedast.StructID(0), "Handle": checkedast.StructID(1), "handle": checkedast.GlobalID(0)},
+		symbols: map[string]hir.Symbol{"lookup": hir.FunctionID(0), "Wrapper": hir.StructID(0), "Handle": hir.StructID(1), "handle": hir.GlobalID(0)},
 	},
 	{name: "duplicate extern parameters", source: `extern fnc read(int32 value,
 bool value) -> none`, diagnostics: []expectedDiagnostic{{messageContains: []string{"duplicate", "param", "value"}, line: 2}}},
@@ -598,11 +598,11 @@ extern fnc read(Named value) -> none`, diagnostics: []expectedDiagnostic{{messag
 		name: "opaque field is allowed in a type declaration",
 		source: `extern struct Handle
 struct Wrapper { Handle handle }`,
-		want: checkedast.Program{Structs: []checkedast.Struct{
+		want: hir.Program{Structs: []hir.Struct{
 			{Name: "Handle", Id: 0, Opaque: true, Unsized: true},
-			{Name: "Wrapper", Id: 1, Unsized: true, Fields: []checkedast.TypedName{{Name: "handle", Type: checkedast.Type{Base: checkedast.StructType, Struct: 0}}}, FieldNames: map[string]int{"handle": 0}},
+			{Name: "Wrapper", Id: 1, Unsized: true, Fields: []hir.TypedName{{Name: "handle", Type: hir.Type{Base: hir.StructType, Struct: 0}}}, FieldNames: map[string]int{"handle": 0}},
 		}},
-		symbols: map[string]checkedast.Symbol{"Handle": checkedast.StructID(0), "Wrapper": checkedast.StructID(1)},
+		symbols: map[string]hir.Symbol{"Handle": hir.StructID(0), "Wrapper": hir.StructID(1)},
 	},
 	{name: "opaque parameter by value", source: `extern struct Handle
 extern fnc consume(Handle handle) -> none`, diagnostics: []expectedDiagnostic{{messageContains: []string{"opaque", "param", "handle", "consume"}, line: 2}}},
@@ -610,11 +610,11 @@ extern fnc consume(Handle handle) -> none`, diagnostics: []expectedDiagnostic{{m
 		name: "opaque return is allowed in an extern declaration",
 		source: `extern struct Handle
 extern fnc create() -> Handle`,
-		want: checkedast.Program{
-			Structs:   []checkedast.Struct{{Name: "Handle", Id: 0, Opaque: true, Unsized: true}},
-			Functions: []checkedast.Function{{Name: "create", Id: 0, External: true, ReturnType: checkedast.Type{Base: checkedast.StructType, Struct: 0}}},
+		want: hir.Program{
+			Structs:   []hir.Struct{{Name: "Handle", Id: 0, Opaque: true, Unsized: true}},
+			Functions: []hir.Function{{Name: "create", Id: 0, External: true, ReturnType: hir.Type{Base: hir.StructType, Struct: 0}}},
 		},
-		symbols: map[string]checkedast.Symbol{"Handle": checkedast.StructID(0), "create": checkedast.FunctionID(0)},
+		symbols: map[string]hir.Symbol{"Handle": hir.StructID(0), "create": hir.FunctionID(0)},
 	},
 	{name: "opaque global by value", source: `extern struct Handle
 global Handle handle = Handle:{}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"opaque", "global", "handle"}, line: 2}}},
@@ -655,8 +655,8 @@ extern struct repeated`, diagnostics: []expectedDiagnostic{{messageContains: []s
 func TestExternDeclarations(t *testing.T) {
 	for _, test := range externDeclarationTests {
 		t.Run(test.name, func(t *testing.T) {
-			c := NewChecker()
-			got, diagnostics := c.CheckProgram(parseDeclarations(t, test.source))
+			c := New()
+			got, diagnostics := c.Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 			if len(test.diagnostics) != 0 {
 				return

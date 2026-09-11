@@ -1,4 +1,4 @@
-package checkedast
+package hir
 
 import (
 	"gl3/lexer"

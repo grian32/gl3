@@ -1,4 +1,4 @@
-package checker
+package sema
 
 import "gl3/util"
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	// "gl3/checker"
+	// "gl3/sema"
 	"gl3/emitter"
 	"gl3/lexer"
 	"gl3/parser"
@@ -130,7 +130,7 @@ func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []strin
 		}
 		return "", nil, fmt.Errorf("%s: exiting after parser errrors\n", file)
 	}
-	// c := checker.New()
+	// c := sema.New()
 	// c.Check(program)
 	// if len(c.Errors) != 0 {
 	// for _, err := range c.Errors {

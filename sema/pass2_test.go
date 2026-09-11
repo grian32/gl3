@@ -1,7 +1,7 @@
-package checker
+package sema
 
 import (
-	ast "gl3/checkedast"
+	ast "gl3/hir"
 	"testing"
 )
 
@@ -89,7 +89,7 @@ var pass2ExpressionTests = []struct {
 func TestPass2Expressions(t *testing.T) {
 	for _, test := range pass2ExpressionTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, diagnostics := NewChecker().CheckProgram(parseDeclarations(t, test.source))
+			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
 				t.Fatal("missing checked function")
@@ -269,7 +269,7 @@ fnc second() -> none { break }`, diagnostics: []expectedDiagnostic{{messageConta
 func TestPass2Diagnostics(t *testing.T) {
 	for _, test := range pass2DiagnosticTests {
 		t.Run(test.name, func(t *testing.T) {
-			_, diagnostics := NewChecker().CheckProgram(parseDeclarations(t, test.source))
+			_, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 		})
 	}
@@ -296,7 +296,7 @@ func TestPass2FixturesParse(t *testing.T) {
 func TestPass2Bodies(t *testing.T) {
 	for _, test := range pass2BodyTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, diagnostics := NewChecker().CheckProgram(parseDeclarations(t, test.source))
+			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
 				t.Fatal("missing checked function")
@@ -338,7 +338,7 @@ var pass2GlobalTests = []struct {
 func TestPass2Globals(t *testing.T) {
 	for _, test := range pass2GlobalTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, diagnostics := NewChecker().CheckProgram(parseDeclarations(t, test.source))
+			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil {
 				t.Fatal("missing checked program")
@@ -366,7 +366,7 @@ var pass2ProgramTests = []struct {
 func TestPass2Program(t *testing.T) {
 	for _, test := range pass2ProgramTests {
 		t.Run(test.name, func(t *testing.T) {
-			got, diagnostics := NewChecker().CheckProgram(parseDeclarations(t, test.source))
+			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			assertDeclarations(t, got, &test.want)
 		})

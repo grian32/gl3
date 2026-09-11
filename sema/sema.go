@@ -1,22 +1,22 @@
-package checker
+package sema
 
 import (
 	"fmt"
-	"gl3/checkedast"
+	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
 	"gl3/util"
 )
 
 type Scope struct {
-	Symbols map[string]checkedast.Symbol
+	Symbols map[string]hir.Symbol
 	Parent  *Scope
 }
 
-type Checker struct {
-	structs   []checkedast.Struct
-	functions []checkedast.Function
-	globals   []checkedast.Global
+type Analyzer struct {
+	structs   []hir.Struct
+	functions []hir.Function
+	globals   []hir.Global
 
 	structPositions  []*util.Position
 	functionPostions []*util.Position
@@ -24,18 +24,18 @@ type Checker struct {
 
 	functionBodies []*parser.BlockStatement
 
-	symbols         map[string]checkedast.Symbol
+	symbols         map[string]hir.Symbol
 	currentScope    *Scope
-	currentFunction *checkedast.Function
+	currentFunction *hir.Function
 
 	diagnostics []Diagnostic
 }
 
-func NewChecker() *Checker {
-	return &Checker{symbols: make(map[string]checkedast.Symbol)}
+func New() *Analyzer {
+	return &Analyzer{symbols: make(map[string]hir.Symbol)}
 }
 
-func (c *Checker) CheckProgram(program *parser.Program) (*checkedast.Program, []Diagnostic) /* todo: diag */ {
+func (c *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic) /* todo: diag */ {
 	if !c.assignIDs(program) {
 		goto end
 	}
@@ -53,14 +53,14 @@ func (c *Checker) CheckProgram(program *parser.Program) (*checkedast.Program, []
 	}
 
 end:
-	return &checkedast.Program{
+	return &hir.Program{
 		Structs:   c.structs,
 		Functions: c.functions,
 		Globals:   c.globals,
 	}, c.diagnostics
 }
 
-func (c *Checker) checkBodies(node parser.Node) bool {
+func (c *Analyzer) checkBodies(node parser.Node) bool {
 	c.currentScope = &Scope{
 		Symbols: c.symbols,
 		Parent:  nil,
@@ -71,14 +71,14 @@ func (c *Checker) checkBodies(node parser.Node) bool {
 		if body := c.functionBodies[f.Id]; body != nil {
 			parentScope := c.currentScope
 			c.currentScope = &Scope{
-				Symbols: make(map[string]checkedast.Symbol, len(f.Parameters)),
+				Symbols: make(map[string]hir.Symbol, len(f.Parameters)),
 				Parent:  parentScope,
 			}
 			c.currentFunction = f
-			f.Locals = make([]checkedast.Local, len(f.Parameters))
+			f.Locals = make([]hir.Local, len(f.Parameters))
 			for j, param := range f.Parameters {
-				f.Locals[j] = checkedast.Local{Name: param.Name, Type: param.Type}
-				c.currentScope.Symbols[param.Name] = checkedast.LocalID(j)
+				f.Locals[j] = hir.Local{Name: param.Name, Type: param.Type}
+				c.currentScope.Symbols[param.Name] = hir.LocalID(j)
 			}
 
 			checkedBody, ok := c.checkBlock(body)
@@ -94,13 +94,13 @@ func (c *Checker) checkBodies(node parser.Node) bool {
 	return true
 }
 
-func (c *Checker) checkBlock(block *parser.BlockStatement) (checkedast.Block, bool) {
-	checkBlock := checkedast.Block{}
+func (c *Analyzer) checkBlock(block *parser.BlockStatement) (hir.Block, bool) {
+	checkBlock := hir.Block{}
 
 	for _, s := range block.Statements {
 		stmt, ok := c.checkStmt(s)
 		if !ok {
-			return checkedast.Block{}, false
+			return hir.Block{}, false
 		}
 		checkBlock.Statements = append(checkBlock.Statements, stmt)
 	}
@@ -108,26 +108,26 @@ func (c *Checker) checkBlock(block *parser.BlockStatement) (checkedast.Block, bo
 	return checkBlock, true
 }
 
-func (c *Checker) checkStmt(stmt parser.Statement) (checkedast.Stmt, bool) {
+func (c *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 	switch stmt := stmt.(type) {
 	case *parser.ExpressionStatement:
 		expr, ok := c.checkExpr(stmt.Expression)
 		if !ok {
 			return nil, false
 		}
-		return &checkedast.ExpressionStatement{Expr: expr}, true
+		return &hir.ExpressionStatement{Expr: expr}, true
 	case *parser.ReturnStatement:
 		expr, ok := c.checkExpr(stmt.Expr)
 		if !ok {
 			return nil, false
 		}
-		return &checkedast.Return{Value: expr}, true
+		return &hir.Return{Value: expr}, true
 	}
 
 	return nil, true
 }
 
-func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
+func (c *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 	switch expr := expr.(type) {
 	case *parser.IntegerLiteral:
 		return c.convertIntLiteral(expr, false)
@@ -137,25 +137,25 @@ func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 			case *parser.IntegerLiteral:
 				return c.convertIntLiteral(right, true)
 			case *parser.FloatLiteral:
-				return &checkedast.FloatLiteral{
-					ExprInfo: checkedast.Info(checkedast.Float),
+				return &hir.FloatLiteral{
+					ExprInfo: hir.Info(hir.Float),
 					Value:    -right.Value,
 				}, true
 			}
 		}
 	case *parser.BooleanExpression:
-		return &checkedast.BooleanLiteral{
-			ExprInfo: checkedast.Info(checkedast.Bool),
+		return &hir.BooleanLiteral{
+			ExprInfo: hir.Info(hir.Bool),
 			Value:    expr.Value,
 		}, true
 	case *parser.StringLiteral:
-		return &checkedast.StringLiteral{
-			ExprInfo: checkedast.InfoPtr(checkedast.Char, 1),
+		return &hir.StringLiteral{
+			ExprInfo: hir.InfoPtr(hir.Char, 1),
 			Value:    expr.Value,
 		}, true
 	case *parser.FloatLiteral:
-		return &checkedast.FloatLiteral{
-			ExprInfo: checkedast.Info(checkedast.Float),
+		return &hir.FloatLiteral{
+			ExprInfo: hir.Info(hir.Float),
 			Value:    expr.Value,
 		}, true
 	case *parser.IdentifierExpression:
@@ -164,7 +164,7 @@ func (c *Checker) checkExpr(expr parser.Expression) (checkedast.Expr, bool) {
 	return nil, true
 }
 
-func (c *Checker) findIdentifier(identExpr *parser.IdentifierExpression) (checkedast.Expr, bool) {
+func (c *Analyzer) findIdentifier(identExpr *parser.IdentifierExpression) (hir.Expr, bool) {
 	identifier := identExpr.Value
 
 	for scope := c.currentScope; scope != nil; scope = scope.Parent {
@@ -174,16 +174,16 @@ func (c *Checker) findIdentifier(identExpr *parser.IdentifierExpression) (checke
 		}
 
 		switch s := s.(type) {
-		case checkedast.LocalID:
-			return &checkedast.LocalRef{
-				ExprInfo: checkedast.ExprInfo{
+		case hir.LocalID:
+			return &hir.LocalRef{
+				ExprInfo: hir.ExprInfo{
 					ResultType: c.currentFunction.Locals[s].Type,
 				},
 				ID: s,
 			}, true
-		case checkedast.GlobalID:
-			return &checkedast.GlobalRef{
-				ExprInfo: checkedast.ExprInfo{
+		case hir.GlobalID:
+			return &hir.GlobalRef{
+				ExprInfo: hir.ExprInfo{
 					ResultType: c.globals[s].Type,
 				},
 				ID: s,
@@ -198,9 +198,9 @@ func (c *Checker) findIdentifier(identExpr *parser.IdentifierExpression) (checke
 	return nil, false
 }
 
-func (c *Checker) convertIntLiteral(expr *parser.IntegerLiteral, negative bool) (*checkedast.IntegerLiteral, bool) {
-	bt := checkedast.ConvertBaseType(expr.Type.Base)
-	if bt == checkedast.Invalid {
+func (c *Analyzer) convertIntLiteral(expr *parser.IntegerLiteral, negative bool) (*hir.IntegerLiteral, bool) {
+	bt := hir.ConvertBaseType(expr.Type.Base)
+	if bt == hir.Invalid {
 		c.appendDiagnostic(expr.Position(), "invalid type on integer literal")
 		return nil, false
 	}
@@ -239,15 +239,15 @@ func (c *Checker) convertIntLiteral(expr *parser.IntegerLiteral, negative bool) 
 		value &= (uint64(1) << bits) - 1
 	}
 
-	return &checkedast.IntegerLiteral{
-		ExprInfo: checkedast.ExprInfo{
-			ResultType: checkedast.Type{Base: bt},
+	return &hir.IntegerLiteral{
+		ExprInfo: hir.ExprInfo{
+			ResultType: hir.Type{Base: bt},
 		},
 		Value: value,
 	}, true
 }
 
-func (c *Checker) assignIDs(node parser.Node) bool {
+func (c *Analyzer) assignIDs(node parser.Node) bool {
 	switch node := node.(type) {
 	case *parser.Program:
 		valid := true
@@ -263,8 +263,8 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := checkedast.StructID(len(c.structs))
-		c.structs = append(c.structs, checkedast.Struct{
+		id := hir.StructID(len(c.structs))
+		c.structs = append(c.structs, hir.Struct{
 			Name:    node.Name,
 			Id:      id,
 			Opaque:  false,
@@ -277,8 +277,8 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := checkedast.StructID(len(c.structs))
-		c.structs = append(c.structs, checkedast.Struct{
+		id := hir.StructID(len(c.structs))
+		c.structs = append(c.structs, hir.Struct{
 			Name:    node.Name,
 			Id:      id,
 			Opaque:  true,
@@ -291,8 +291,8 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := checkedast.FunctionID(len(c.functions))
-		c.functions = append(c.functions, checkedast.Function{
+		id := hir.FunctionID(len(c.functions))
+		c.functions = append(c.functions, hir.Function{
 			Name:     node.Name.Value,
 			Id:       id,
 			External: false,
@@ -306,8 +306,8 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := checkedast.FunctionID(len(c.functions))
-		c.functions = append(c.functions, checkedast.Function{
+		id := hir.FunctionID(len(c.functions))
+		c.functions = append(c.functions, hir.Function{
 			Name:     node.Name,
 			Id:       id,
 			External: true,
@@ -325,8 +325,8 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := checkedast.GlobalID(len(c.globals))
-		c.globals = append(c.globals, checkedast.Global{
+		id := hir.GlobalID(len(c.globals))
+		c.globals = append(c.globals, hir.Global{
 			Name:     node.Name.Value,
 			Id:       id,
 			Constant: node.Constant,
@@ -338,7 +338,7 @@ func (c *Checker) assignIDs(node parser.Node) bool {
 	return true
 }
 
-func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
+func (c *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 	switch node := node.(type) {
 	case *parser.Program:
 		valid := true
@@ -351,7 +351,7 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 		return valid
 	case *parser.FunctionStatement:
 		funcSymbol, _ := c.symbols[node.Name.Value]
-		funcId := funcSymbol.(checkedast.FunctionID)
+		funcId := funcSymbol.(hir.FunctionID)
 		funcAst := &c.functions[funcId]
 
 		retType, ok := c.functionRetType(node.Type, node.Position(), node.Name.Value, false)
@@ -363,7 +363,7 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 		return c.checkFunctionParams(node.Params, funcAst, node.Name.Value)
 	case *parser.ExternFunctionStatement:
 		funcSymbol, _ := c.symbols[node.Name]
-		funcId := funcSymbol.(checkedast.FunctionID)
+		funcId := funcSymbol.(hir.FunctionID)
 		funcAst := &c.functions[funcId]
 
 		retType, ok := c.functionRetType(node.ReturnType, node.Position(), node.Name, true)
@@ -378,20 +378,20 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 			break
 		}
 		globalSymbol, _ := c.symbols[node.Name.Value]
-		globalAst := &c.globals[globalSymbol.(checkedast.GlobalID)]
+		globalAst := &c.globals[globalSymbol.(hir.GlobalID)]
 
-		gt, ok := checkedast.ConvertVarType(node.Type, c.symbols)
+		gt, ok := hir.ConvertVarType(node.Type, c.symbols)
 		if !ok {
 			c.appendDiagnostic(node.Name.Position(), "invalid type for global `%s`", node.Name.Value)
 			return false
 		}
 
-		if gt.Base == checkedast.Void && gt.Pointer == 0 {
+		if gt.Base == hir.Void && gt.Pointer == 0 {
 			c.appendDiagnostic(node.Name.Position(), "none type is not allowed on global definitions, global `%s`", node.Name.Value)
 			return false
 		}
 
-		if gt.Base == checkedast.StructType && gt.Pointer == 0 && c.structs[gt.Struct].Opaque {
+		if gt.Base == hir.StructType && gt.Pointer == 0 && c.structs[gt.Struct].Opaque {
 			c.appendDiagnostic(node.Name.Position(), "opaque struct by value is not allowed on global definitions, global `%s`", node.Name.Value)
 			return false
 		}
@@ -399,7 +399,7 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 		globalAst.Type = gt
 	case *parser.StructStatement:
 		structSymbol, _ := c.symbols[node.Name]
-		structAst := &c.structs[structSymbol.(checkedast.StructID)]
+		structAst := &c.structs[structSymbol.(hir.StructID)]
 
 		fieldsSucceded := true
 
@@ -412,21 +412,21 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 				continue
 			}
 
-			ft, ok := checkedast.ConvertVarType(field.Type, c.symbols)
+			ft, ok := hir.ConvertVarType(field.Type, c.symbols)
 			if !ok {
 				c.appendDiagnostic(field.Name.Position(), "invalid field type for field `%s` on struct `%s`", field.Name.Value, node.Name)
 				fieldsSucceded = false
 				continue
 			}
 
-			if ft.Base == checkedast.Void && ft.Pointer == 0 {
+			if ft.Base == hir.Void && ft.Pointer == 0 {
 				c.appendDiagnostic(field.Name.Position(), "none type not allowed on fields, field `%s` on struct `%s`", field.Name.Value, node.Name)
 				fieldsSucceded = false
 				continue
 			}
 
 			structAst.FieldNames[field.Name.Value] = len(structAst.Fields)
-			structAst.Fields = append(structAst.Fields, checkedast.TypedName{
+			structAst.Fields = append(structAst.Fields, hir.TypedName{
 				Name: field.Name.Value,
 				Type: ft,
 			})
@@ -438,27 +438,27 @@ func (c *Checker) populateFieldsFunctions(node parser.Node) bool {
 	return true
 }
 
-func (c *Checker) checkSizedDeclarations() bool {
+func (c *Analyzer) checkSizedDeclarations() bool {
 	for i := range c.structs {
 		s := &c.structs[i]
-		s.Unsized = !c.isSized(checkedast.Type{Base: checkedast.StructType, Struct: s.Id}, map[checkedast.StructID]struct{}{})
+		s.Unsized = !c.isSized(hir.Type{Base: hir.StructType, Struct: s.Id}, map[hir.StructID]struct{}{})
 	}
 
 	for _, fnc := range c.functions {
 		for _, p := range fnc.Parameters {
-			if !c.isSized(p.Type, map[checkedast.StructID]struct{}{}) {
+			if !c.isSized(p.Type, map[hir.StructID]struct{}{}) {
 				c.appendDiagnostic(c.functionPostions[fnc.Id], "unsized type is not allowed for parameter `%s` in function `%s`; use a pointer", p.Name, fnc.Name)
 				return false
 			}
 		}
-		if !fnc.External && fnc.ReturnType.Base != checkedast.Void && !c.isSized(fnc.ReturnType, map[checkedast.StructID]struct{}{}) {
+		if !fnc.External && fnc.ReturnType.Base != hir.Void && !c.isSized(fnc.ReturnType, map[hir.StructID]struct{}{}) {
 			c.appendDiagnostic(c.functionPostions[fnc.Id], "unsized return type is not allowed for function `%s`; use a pointer", fnc.Name)
 			return false
 		}
 	}
 
 	for _, g := range c.globals {
-		if !c.isSized(g.Type, map[checkedast.StructID]struct{}{}) {
+		if !c.isSized(g.Type, map[hir.StructID]struct{}{}) {
 			c.appendDiagnostic(c.globalPositions[g.Id], "unsized type is not allowed for global `%s`; use a pointer", g.Name)
 			return false
 		}
@@ -467,7 +467,7 @@ func (c *Checker) checkSizedDeclarations() bool {
 	return true
 }
 
-func (c *Checker) checkFunctionParams(params []parser.FunctionParameter, funcAst *checkedast.Function, funcName string) bool {
+func (c *Analyzer) checkFunctionParams(params []parser.FunctionParameter, funcAst *hir.Function, funcName string) bool {
 	funcAst.ParameterNames = make(map[string]int)
 	paramsSucceded := true
 
@@ -478,18 +478,18 @@ func (c *Checker) checkFunctionParams(params []parser.FunctionParameter, funcAst
 			continue
 		}
 
-		pt, ok := checkedast.ConvertVarType(param.Type, c.symbols)
+		pt, ok := hir.ConvertVarType(param.Type, c.symbols)
 		if !ok {
 			c.appendDiagnostic(param.Name.Position(), "invalid parameter type for parameter `%s` on function `%s`", param.Name.Value, funcName)
 			paramsSucceded = false
 			continue
 		}
-		if pt.Base == checkedast.Void && pt.Pointer == 0 {
+		if pt.Base == hir.Void && pt.Pointer == 0 {
 			c.appendDiagnostic(param.Name.Position(), "none type is not allowed on parameters, param `%s` on function `%s`", param.Name.Value, funcName)
 			paramsSucceded = false
 			continue
 		}
-		if pt.Base == checkedast.StructType && pt.Pointer == 0 {
+		if pt.Base == hir.StructType && pt.Pointer == 0 {
 			stct := c.structs[pt.Struct]
 			if stct.Opaque {
 				c.appendDiagnostic(param.Name.Position(), "opaque struct value types are not allowed on parameters, param `%s` on function `%s`", param.Name.Value, funcName)
@@ -499,7 +499,7 @@ func (c *Checker) checkFunctionParams(params []parser.FunctionParameter, funcAst
 		}
 
 		funcAst.ParameterNames[param.Name.Value] = len(funcAst.Parameters)
-		funcAst.Parameters = append(funcAst.Parameters, checkedast.TypedName{
+		funcAst.Parameters = append(funcAst.Parameters, hir.TypedName{
 			Name: param.Name.Value,
 			Type: pt,
 		})
@@ -508,32 +508,32 @@ func (c *Checker) checkFunctionParams(params []parser.FunctionParameter, funcAst
 	return paramsSucceded
 }
 
-func (c *Checker) functionRetType(retType lexer.VarType, position *util.Position, funcName string, extern bool) (checkedast.Type, bool) {
-	rt, ok := checkedast.ConvertVarType(retType, c.symbols)
+func (c *Analyzer) functionRetType(retType lexer.VarType, position *util.Position, funcName string, extern bool) (hir.Type, bool) {
+	rt, ok := hir.ConvertVarType(retType, c.symbols)
 	if !ok {
 		c.appendDiagnostic(position, "invalid return type for function `%s`", funcName)
-		return checkedast.Type{}, false
+		return hir.Type{}, false
 	}
 
-	if !extern && rt.Base == checkedast.StructType && rt.Pointer == 0 && c.structs[rt.Struct].Opaque {
+	if !extern && rt.Base == hir.StructType && rt.Pointer == 0 && c.structs[rt.Struct].Opaque {
 		c.appendDiagnostic(position, "opaque struct value return type is not allowed for function `%s`", funcName)
-		return checkedast.Type{}, false
+		return hir.Type{}, false
 	}
 
 	return rt, true
 }
 
-func (c *Checker) isSized(t checkedast.Type, visitedStructs map[checkedast.StructID]struct{}) bool {
+func (c *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{}) bool {
 	if t.Pointer > 0 {
 		return true
 	}
 
 	// primitive
-	if t.Base != checkedast.StructType && t.Base != checkedast.Void {
+	if t.Base != hir.StructType && t.Base != hir.Void {
 		return true
 	}
 
-	if t.Base == checkedast.StructType {
+	if t.Base == hir.StructType {
 		if c.structs[t.Struct].Opaque {
 			return false
 		} else {
@@ -556,7 +556,7 @@ func (c *Checker) isSized(t checkedast.Type, visitedStructs map[checkedast.Struc
 	return false
 }
 
-func (c *Checker) isSymbolDuplicate(name string, pos *util.Position) bool {
+func (c *Analyzer) isSymbolDuplicate(name string, pos *util.Position) bool {
 	if _, exists := c.symbols[name]; exists {
 		c.appendDiagnostic(pos, "duplicate symbol `%s`", name)
 		return true
@@ -565,7 +565,7 @@ func (c *Checker) isSymbolDuplicate(name string, pos *util.Position) bool {
 	return false
 }
 
-func (c *Checker) appendDiagnostic(pos *util.Position, msg string, v ...any) {
+func (c *Analyzer) appendDiagnostic(pos *util.Position, msg string, v ...any) {
 	c.diagnostics = append(c.diagnostics, Diagnostic{
 		Message:  fmt.Sprintf(msg, v...),
 		Position: pos,

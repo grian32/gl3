@@ -1,4 +1,4 @@
-package checkedast
+package hir
 
 type Symbol interface {
 	symbol()
