@@ -142,6 +142,12 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		if !ok {
 			return nil, false
 		}
+
+		retType := a.currentFunction.ReturnType
+		if expr.Type() != retType {
+			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type().String(), a.currentFunction.Name, retType.String())
+		}
+
 		return &hir.Return{Value: expr}, true
 	case *parser.DefStatement:
 		if stmt.Global || stmt.Constant {
