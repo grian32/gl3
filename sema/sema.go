@@ -22,7 +22,8 @@ type Analyzer struct {
 	functionPostions []*util.Position
 	globalPositions  []*util.Position
 
-	functionBodies []*parser.BlockStatement
+	functionBodies     []*parser.BlockStatement
+	globalInitializers []parser.Expression
 
 	symbols         map[string]hir.Symbol
 	currentScope    *Scope
@@ -48,7 +49,7 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 		goto end
 	}
 
-	if !a.checkBodies(program) {
+	if !a.checkBodies() {
 		goto end
 	}
 
@@ -60,10 +61,30 @@ end:
 	}, a.diagnostics
 }
 
-func (a *Analyzer) checkBodies(node parser.Node) bool {
+func (a *Analyzer) checkBodies() bool {
 	a.currentScope = &Scope{
 		Symbols: a.symbols,
 		Parent:  nil,
+	}
+
+	for i := range a.globals {
+		g := &a.globals[i]
+		initExpr, ok := a.checkExpr(a.globalInitializers[g.Id])
+		if !ok {
+			return false
+		}
+
+		if g.Type != initExpr.Type() {
+			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type().String(), g.Name, g.Type.String())
+			return false
+		}
+
+		if !isConstantInitializer(initExpr) {
+			a.appendDiagnostic(a.globalPositions[g.Id], "global `%s` must have constant initializer", g.Name)
+			return false
+		}
+
+		g.Initializer = initExpr
 	}
 
 	for i := range a.functions {
@@ -373,6 +394,7 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			Constant: node.Constant,
 		})
 		a.globalPositions = append(a.globalPositions, node.Position())
+		a.globalInitializers = append(a.globalInitializers, node.Right)
 		a.symbols[node.Name.Value] = id
 	}
 
@@ -597,6 +619,15 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 	return false
 }
 
+func isConstantInitializer(expr hir.Expr) bool {
+	switch expr.(type) {
+	case *hir.IntegerLiteral, *hir.FloatLiteral,
+		*hir.BooleanLiteral, *hir.StringLiteral:
+		return true
+	default:
+		return false
+	}
+}
 func (a *Analyzer) isSymbolDuplicate(name string, pos *util.Position) bool {
 	if _, exists := a.symbols[name]; exists {
 		a.appendDiagnostic(pos, "duplicate symbol `%s`", name)
