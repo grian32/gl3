@@ -314,7 +314,7 @@ func (e *Emitter) Emit(node parser.Node) (value.Value, lexer.VarType) {
 			}
 		}
 
-		e.appendError(node.Position(), "operator %s invalid for types %s(%s), %s(%s)", node.Operator, leftVt.String(), node.Left.String(), rightVt.String(), node.Right.String())
+		e.appendError(node.Position(), "operator %s invalid for types %s(%s), %s(%s)", node.Operator, leftVt, node.Left, rightVt, node.Right)
 	case *parser.PrefixExpression:
 		switch node.Operator {
 		case "!":

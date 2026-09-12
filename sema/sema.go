@@ -75,7 +75,7 @@ func (a *Analyzer) checkBodies() bool {
 		}
 
 		if g.Type != initExpr.Type() {
-			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type().String(), g.Name, g.Type.String())
+			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type(), g.Name, g.Type)
 			return false
 		}
 
@@ -155,7 +155,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		}
 
 		if expr.Type() != retType {
-			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type().String(), a.currentFunction.Name, retType.String())
+			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type(), a.currentFunction.Name, retType)
 			return nil, false
 		}
 
@@ -187,7 +187,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		}
 
 		if defType != expr.Type() {
-			a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type().String(), defType.String())
+			a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type(), defType)
 			return nil, false
 		}
 
@@ -307,7 +307,7 @@ func (a *Analyzer) convertIntLiteral(expr *parser.IntegerLiteral, negative bool)
 	}
 
 	if !util.IntegerInRange(expr.UValue, negative, bits, signed) {
-		a.appendDiagnostic(expr.Position(), "invalid value for literal of type %s", expr.Type.Base.String())
+		a.appendDiagnostic(expr.Position(), "invalid value for literal of type %s", expr.Type.Base)
 		return nil, false
 	}
 

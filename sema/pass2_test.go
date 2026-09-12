@@ -113,7 +113,7 @@ var pass2DiagnosticTests = []struct {
 	{name: "negative unsigned literal", source: `fnc sample() -> uint8 { return -1u8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Uint8"}, line: 1}}},
 	{name: "calling an opaque return function requires a sized value", source: `extern struct Handle
 extern fnc create() -> Handle
-fnc use() -> none { create() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 3}}},
+fnc use() -> none { create() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot call", "unsized return type"}, line: 3}}},
 	{name: "opaque pointer arithmetic requires element size", source: `extern struct Handle
 fnc next(Handle* p) -> Handle* { return p + 1 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
 	{name: "opaque dereference cannot load a value", source: `extern struct Handle
@@ -177,7 +177,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unknown", "missing"}, line: 2}}},
 	{name: "unknown call", source: `fnc sample() -> int32 {
  return missing()
-}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unknown", "missing"}, line: 2}}},
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"could not find symbol", "missing"}, line: 2}}},
 	{name: "local type", source: `fnc sample() -> int32 {
  def Missing x = 1i32 return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"type", "Missing"}, line: 2}}},

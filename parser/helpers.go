@@ -23,7 +23,7 @@ func (p *Parser) currPrecedence() byte {
 }
 
 func (p *Parser) noPrefixParseFnError(t lexer.Token, pos *util.Position) {
-	p.appendError(pos, "no prefix parse function for %s, peek=%s found", t.Type.String(), p.peekToken.Type.String())
+	p.appendError(pos, "no prefix parse function for %s, peek=%s found", t.Type, p.peekToken.Type)
 	// to prevent inf loops
 	p.NextToken()
 }

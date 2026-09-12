@@ -118,7 +118,7 @@ func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []strin
 	program := p.ParseProgram()
 	err := safeRun(func() {
 		if opts.Dbg {
-			log.Printf("%s: %s\n", file, program.String())
+			log.Printf("%s: %s\n", file, program)
 		}
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []strin
 	}
 	if len(p.Errors) != 0 {
 		for _, err := range p.Errors {
-			log.Printf("parser error: %s:%s\n", file, err.String())
+			log.Printf("parser error: %s:%s\n", file, &err)
 		}
 		return "", nil, fmt.Errorf("%s: exiting after parser errrors\n", file)
 	}
@@ -134,7 +134,7 @@ func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []strin
 	// c.Check(program)
 	// if len(c.Errors) != 0 {
 	// for _, err := range c.Errors {
-	// log.Printf("checker warning: %s:%s\n", file, err.String())
+	// log.Printf("checker warning: %s:%s\n", file, &err)
 	// }
 	// }
 
@@ -144,7 +144,7 @@ func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []strin
 	})
 	if len(e.Errors) != 0 {
 		for _, err := range e.Errors {
-			log.Printf("compiler error: %s:%s\n", file, err.String())
+			log.Printf("compiler error: %s:%s\n", file, &err)
 		}
 		return "", nil, fmt.Errorf("compiler errors\n")
 	}

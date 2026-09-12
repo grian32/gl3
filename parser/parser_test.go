@@ -1144,7 +1144,7 @@ func runTests(t *testing.T, tests map[string]InputOutput) {
 					t.Errorf("got parser errors: %v", p.Errors)
 				}
 				if program.String() != test.output {
-					t.Errorf("wanted: %s, got: %s", test.output, program.String())
+					t.Errorf("wanted: %s, got: %s", test.output, program)
 				}
 				done <- true
 			}()
@@ -1246,7 +1246,7 @@ func expressionShape(t *testing.T, expr Expression) string {
 	case *InfixExpression:
 		return fmt.Sprintf("%s(%s, %s)", e.Operator, shape(e.Left), shape(e.Right))
 	case *CastExpression:
-		return fmt.Sprintf("cast(%s, %s)", e.Type.String(), shape(e.Expr))
+		return fmt.Sprintf("cast(%s, %s)", e.Type, shape(e.Expr))
 	case *SizeofExpression:
 		return "sizeof(" + e.Type.String() + ")"
 	case *PrefixExpression:
