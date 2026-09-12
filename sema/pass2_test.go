@@ -207,7 +207,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"continue", "loop"}, line: 2}}},
 	{name: "wrong binary operands", source: `fnc sample() -> int32 {
  return 1i32 + true
-}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"int32", "bool"}, line: 2}}},
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"types of operands cannot be different"}, line: 2}}},
 	{name: "arithmetic boolean", source: `fnc sample() -> int32 {
  def bool x = true + false return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},

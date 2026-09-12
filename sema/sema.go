@@ -243,8 +243,73 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkCall(expr)
 	case *parser.AssignmentExpression:
 		return a.checkAssignment(expr)
+	case *parser.InfixExpression:
+		return a.checkBinaryOp(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary, bool) {
+	leftExpr, ok := a.checkExpr(infixExpr.Left)
+	if !ok {
+		return nil, false
+	}
+	rightExpr, ok := a.checkExpr(infixExpr.Right)
+	if !ok {
+		return nil, false
+	}
+	if leftExpr.Type() != rightExpr.Type() {
+		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different.")
+		return nil, false
+	}
+
+	if leftExpr.Type().Pointer > 0 {
+		// pointer arithmetic currently unsupported
+		return nil, false
+	}
+
+	switch leftExpr.Type().Base {
+	case hir.Int, hir.Int32, hir.Int16, hir.Int8,
+		hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+		switch infixExpr.Operator {
+		case "+":
+			return makeBinaryNode(hir.IntAdd, leftExpr, rightExpr, leftExpr.Type()), true
+		case "-":
+			return makeBinaryNode(hir.IntSubtract, leftExpr, rightExpr, leftExpr.Type()), true
+		case "*":
+			return makeBinaryNode(hir.IntMultiply, leftExpr, rightExpr, leftExpr.Type()), true
+		case "/":
+			op := hir.SignedDivide
+			switch leftExpr.Type().Base {
+			case hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+				op = hir.UnsignedDivide
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+		}
+	case hir.Float:
+		switch infixExpr.Operator {
+		case "+":
+			return makeBinaryNode(hir.FloatAdd, leftExpr, rightExpr, leftExpr.Type()), true
+		case "-":
+			return makeBinaryNode(hir.FloatSubtract, leftExpr, rightExpr, leftExpr.Type()), true
+		case "*":
+			return makeBinaryNode(hir.FloatMultiply, leftExpr, rightExpr, leftExpr.Type()), true
+		case "/":
+			return makeBinaryNode(hir.FloatDivide, leftExpr, rightExpr, leftExpr.Type()), true
+		}
+	}
+
+	a.appendDiagnostic(infixExpr.Position(), "unsupported op.")
+	return nil, false
+}
+
+func makeBinaryNode(op hir.BinaryOp, left, right hir.Expr, resultType hir.Type) *hir.Binary {
+	return &hir.Binary{
+		ExprInfo: hir.ExprInfo{ResultType: resultType},
+		Op:       op,
+		Left:     left,
+		Right:    right,
+	}
 }
 
 func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hir.Assignment, bool) {
