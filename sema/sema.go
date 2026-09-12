@@ -239,6 +239,71 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		}, true
 	case *parser.IdentifierExpression:
 		return a.findIdentifier(expr)
+	case *parser.CallExpression:
+		return a.checkCall(expr)
+	}
+	return nil, false
+}
+
+func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) {
+	fncName := callExpr.Function.Value
+	fnc, ok := a.resolveSymbol(fncName)
+	if !ok {
+		a.appendDiagnostic(callExpr.Position(), "could not find symbol `%s`.", fncName)
+		return nil, false
+	}
+
+	if _, ok := fnc.(hir.FunctionID); !ok {
+		a.appendDiagnostic(callExpr.Position(), "`%s` is not a function.", fncName)
+		return nil, false
+	}
+
+	fncNode := a.functions[int(fnc.(hir.FunctionID))]
+	if len(callExpr.Params) != len(fncNode.Parameters) {
+		a.appendDiagnostic(callExpr.Position(), "function `%s` expects %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
+		return nil, false
+	}
+
+	var args []hir.Expr
+	badParam := false
+	for i, p := range callExpr.Params {
+		hirExpr, ok := a.checkExpr(p)
+		if !ok {
+			a.appendDiagnostic(p.Position(), "argument %d (`%s`): invalid expression", i+1, fncNode.Parameters[i].Name)
+			badParam = true
+			continue
+		}
+		if hirExpr.Type() != fncNode.Parameters[i].Type {
+			a.appendDiagnostic(p.Position(), "argument %d (`%s`): expected `%s`, got `%s`", i+1, fncNode.Parameters[i].Name, fncNode.Parameters[i].Type, hirExpr.Type())
+			badParam = true
+			continue
+		}
+		args = append(args, hirExpr)
+	}
+
+	if badParam {
+		return nil, false
+	}
+
+	if (fncNode.ReturnType.Base != hir.Void || fncNode.ReturnType.Pointer != 0) && !a.isSized(fncNode.ReturnType, make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(callExpr.Position(), "cannot call function with unsized return type.")
+		return nil, false
+	}
+
+	return &hir.Call{
+		ExprInfo: hir.ExprInfo{
+			ResultType: fncNode.ReturnType,
+		},
+		Function: fncNode.Id,
+		Args:     args,
+	}, true
+}
+
+func (a *Analyzer) resolveSymbol(name string) (hir.Symbol, bool) {
+	for scope := a.currentScope; scope != nil; scope = scope.Parent {
+		if symbol, ok := scope.Symbols[name]; ok {
+			return symbol, true
+		}
 	}
 	return nil, false
 }
@@ -246,12 +311,8 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 func (a *Analyzer) findIdentifier(identExpr *parser.IdentifierExpression) (hir.Expr, bool) {
 	identifier := identExpr.Value
 
-	for scope := a.currentScope; scope != nil; scope = scope.Parent {
-		s, ok := scope.Symbols[identifier]
-		if !ok {
-			continue
-		}
-
+	s, ok := a.resolveSymbol(identifier)
+	if ok {
 		switch s := s.(type) {
 		case hir.LocalID:
 			return &hir.LocalRef{
