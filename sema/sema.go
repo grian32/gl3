@@ -241,7 +241,67 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.findIdentifier(expr)
 	case *parser.CallExpression:
 		return a.checkCall(expr)
+	case *parser.AssignmentExpression:
+		return a.checkAssignment(expr)
 	}
+	return nil, false
+}
+
+func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hir.Assignment, bool) {
+	place, ok := a.checkPlace(assignExpr.Left)
+	if !ok {
+		return nil, false
+	}
+	if gp, ok := place.(*hir.GlobalPlace); ok && a.globals[gp.ID].Constant {
+		a.appendDiagnostic(assignExpr.Position(), "modifying constant globals is not permitted.")
+		return nil, false
+	}
+
+	rightExpr, ok := a.checkExpr(assignExpr.Right)
+	if !ok {
+		a.appendDiagnostic(assignExpr.Position(), "invalid expr on rhs of assignment.")
+		return nil, false
+	}
+
+	if rightExpr.Type() != place.Type() {
+		a.appendDiagnostic(assignExpr.Position(), "expected type `%s` in assignment but got type `%s`.", place.Type(), rightExpr.Type())
+		return nil, false
+	}
+
+	return &hir.Assignment{
+		ExprInfo: hir.ExprInfo{
+			// this should be safe? since place. type == rightexpr.type
+			ResultType: place.Type(),
+		},
+		Target: place,
+		Value:  rightExpr,
+	}, true
+}
+
+func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
+	if _, ok := expr.(*parser.IdentifierExpression); !ok {
+		// non identifier lhs not currenty allowed
+		return nil, false
+	}
+	identExpr := expr.(*parser.IdentifierExpression)
+	found, ok := a.findIdentifier(identExpr)
+	if !ok {
+		// diag emitted by findidentifier
+		return nil, false
+	}
+	switch found := found.(type) {
+	case *hir.LocalRef:
+		return &hir.LocalPlace{
+			ExprInfo: found.ExprInfo,
+			ID:       found.ID,
+		}, true
+	case *hir.GlobalRef:
+		return &hir.GlobalPlace{
+			ExprInfo: found.ExprInfo,
+			ID:       found.ID,
+		}, true
+	}
+
 	return nil, false
 }
 

@@ -254,7 +254,7 @@ fnc sample() -> int32 { return other(true) }`, diagnostics: []expectedDiagnostic
 	{name: "call nonfunction", source: `global int32 x = 1i32
 fnc sample() -> int32 { return x() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"x", "function"}, line: 2}}},
 	{name: "constant assignment", source: `global const int32 x = 1i32
-fnc sample() -> int32 { x = 2i32 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant", "x"}, line: 2}}},
+fnc sample() -> int32 { x = 2i32 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant globals", "not permitted"}, line: 2}}},
 	{name: "unknown field", source: `struct S { int32 x }
 fnc sample(S s) -> int32 { return s.missing }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"field", "missing"}, line: 2}}},
 	{name: "struct initializer type", source: `struct S { int32 x }
