@@ -211,17 +211,7 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 	case *parser.IntegerLiteral:
 		return a.convertIntLiteral(expr, false)
 	case *parser.PrefixExpression:
-		if expr.Operator == "-" {
-			switch right := expr.Right.(type) {
-			case *parser.IntegerLiteral:
-				return a.convertIntLiteral(right, true)
-			case *parser.FloatLiteral:
-				return &hir.FloatLiteral{
-					ExprInfo: hir.Info(hir.Float),
-					Value:    -right.Value,
-				}, true
-			}
-		}
+		return a.checkPrefix(expr)
 	case *parser.BooleanExpression:
 		return &hir.BooleanLiteral{
 			ExprInfo: hir.Info(hir.Bool),
@@ -247,6 +237,57 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkBinaryOp(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
+	switch expr.Operator {
+	case "-":
+		switch right := expr.Right.(type) {
+		case *parser.IntegerLiteral:
+			return a.convertIntLiteral(right, true)
+		case *parser.FloatLiteral:
+			return &hir.FloatLiteral{ExprInfo: hir.Info(hir.Float), Value: -right.Value}, true
+		}
+	case "!":
+		if right, ok := expr.Right.(*parser.BooleanExpression); ok {
+			return &hir.BooleanLiteral{ExprInfo: hir.Info(hir.Bool), Value: !right.Value}, true
+		}
+	}
+
+	right, ok := a.checkExpr(expr.Right)
+	if !ok {
+		return nil, false
+	}
+	t := right.Type()
+	op := hir.InvalidUnaryOp
+	if t.Pointer == 0 {
+		switch expr.Operator {
+		case "-":
+			switch t.Base {
+			case hir.Int, hir.Int32, hir.Int16, hir.Int8:
+				op = hir.IntNegate
+			case hir.Float:
+				op = hir.FloatNegate
+			}
+		case "!":
+			if t.Base == hir.Bool {
+				op = hir.BoolNot
+			}
+		}
+	}
+	if op == hir.InvalidUnaryOp {
+		if expr.Operator == "!" {
+			a.appendDiagnostic(expr.Position(), "operator `!` requires bool, got `%s`", t)
+		} else {
+			a.appendDiagnostic(expr.Position(), "unsupported prefix op `%s` on type `%s`", expr.Operator, t)
+		}
+		return nil, false
+	}
+	return &hir.Unary{
+		ExprInfo: hir.ExprInfo{ResultType: t},
+		Op:       op,
+		Value:    right,
+	}, true
 }
 
 func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary, bool) {
