@@ -137,7 +137,7 @@ fnc use() -> none { create() }`, diagnostics: []expectedDiagnostic{{messageConta
 	{name: "opaque pointer arithmetic requires element size", source: `extern struct Handle
 fnc next(Handle* p) -> Handle* { return p + 1 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
 	{name: "opaque dereference cannot load a value", source: `extern struct Handle
-fnc read(Handle* p) -> none { *p }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
+fnc read(Handle* p) -> none { *p }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
 	{name: "sizeof struct containing opaque field requires a sized type", source: `extern struct Handle
 struct Wrapper { Handle handle }
 fnc size() -> uint { return sizeof Wrapper }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Wrapper", "size"}, line: 3}}},

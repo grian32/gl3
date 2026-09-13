@@ -235,8 +235,34 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkAssignment(expr)
 	case *parser.InfixExpression:
 		return a.checkBinaryOp(expr)
+	case *parser.DereferenceExpression:
+		return a.checkDeref(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkDeref(expr *parser.DereferenceExpression) (*hir.Dereference, bool) {
+	ptr, ok := a.checkExpr(expr.Var)
+	if !ok {
+		return nil, false
+	}
+
+	t := ptr.Type()
+	if t.Pointer == 0 {
+		a.appendDiagnostic(expr.Position(), "cannot dereference a non pointer")
+		return nil, false
+	}
+	t.Pointer--
+
+	if !a.isSized(t, make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(expr.Position(), "cannot dereference unsized type `%s`", t)
+		return nil, false
+	}
+
+	return &hir.Dereference{
+		ExprInfo: hir.ExprInfo{ResultType: t},
+		Pointer:  ptr,
+	}, true
 }
 
 func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
@@ -446,6 +472,11 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 	if !ok {
 		return nil, false
 	}
+	if !a.isSized(place.Type(), make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(assignExpr.Position(), "cannot assign to unsized type `%s`.", place.Type())
+		return nil, false
+	}
+
 	if gp, ok := place.(*hir.GlobalPlace); ok && a.globals[gp.ID].Constant {
 		a.appendDiagnostic(assignExpr.Position(), "modifying constant globals is not permitted.")
 		return nil, false
@@ -473,29 +504,42 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 }
 
 func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
-	if _, ok := expr.(*parser.IdentifierExpression); !ok {
-		// non identifier lhs not currenty allowed
-		return nil, false
-	}
-	identExpr := expr.(*parser.IdentifierExpression)
-	found, ok := a.findIdentifier(identExpr)
-	if !ok {
-		// diag emitted by findidentifier
-		return nil, false
-	}
-	switch found := found.(type) {
-	case *hir.LocalRef:
-		return &hir.LocalPlace{
-			ExprInfo: found.ExprInfo,
-			ID:       found.ID,
-		}, true
-	case *hir.GlobalRef:
-		return &hir.GlobalPlace{
-			ExprInfo: found.ExprInfo,
-			ID:       found.ID,
+	if identExpr, ok := expr.(*parser.IdentifierExpression); ok {
+		found, ok := a.findIdentifier(identExpr)
+		if !ok {
+			// diag emitted by findidentifier
+			return nil, false
+		}
+		switch found := found.(type) {
+		case *hir.LocalRef:
+			return &hir.LocalPlace{
+				ExprInfo: found.ExprInfo,
+				ID:       found.ID,
+			}, true
+		case *hir.GlobalRef:
+			return &hir.GlobalPlace{
+				ExprInfo: found.ExprInfo,
+				ID:       found.ID,
+			}, true
+		}
+	} else if derefExpr, ok := expr.(*parser.DereferenceExpression); ok {
+		expr, ok := a.checkExpr(derefExpr.Var)
+		if !ok {
+			return nil, false
+		}
+		t := expr.Type()
+		if t.Pointer == 0 {
+			a.appendDiagnostic(derefExpr.Position(), "cannot dereference a non pointer")
+			return nil, false
+		}
+		t.Pointer--
+		return &hir.DerefPlace{
+			ExprInfo: hir.ExprInfo{ResultType: t},
+			Pointer:  expr,
 		}, true
 	}
 
+	a.appendDiagnostic(expr.Position(), "cannot address lhs of assignment")
 	return nil, false
 }
 
