@@ -237,8 +237,26 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkBinaryOp(expr)
 	case *parser.DereferenceExpression:
 		return a.checkDeref(expr)
+	case *parser.ReferenceExpression:
+		return a.checkRef(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkRef(expr *parser.ReferenceExpression) (*hir.AddressOf, bool) {
+	place, ok := a.checkPlace(expr.Var)
+	if !ok {
+		return nil, false
+	}
+
+	t := place.Type()
+	// can overflow technically but if you have > 255 pointers you have bigger problems
+	t.Pointer++
+
+	return &hir.AddressOf{
+		ExprInfo: hir.ExprInfo{ResultType: t},
+		Target:   place,
+	}, true
 }
 
 func (a *Analyzer) checkDeref(expr *parser.DereferenceExpression) (*hir.Dereference, bool) {
