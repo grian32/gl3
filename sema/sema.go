@@ -258,13 +258,44 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary
 	if !ok {
 		return nil, false
 	}
-	if leftExpr.Type() != rightExpr.Type() {
-		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different.")
-		return nil, false
+	if leftExpr.Type().Pointer > 0 {
+		op := hir.PointerAdd
+		if infixExpr.Operator == "-" {
+			op = hir.PointerSubtract
+		} else if infixExpr.Operator != "+" {
+			a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on pointer type `%s`", infixExpr.Operator, leftExpr.Type())
+			return nil, false
+		}
+
+		offsetType := rightExpr.Type()
+		integerOffset := false
+		if offsetType.Pointer == 0 {
+			switch offsetType.Base {
+			case hir.Int, hir.Int32, hir.Int16, hir.Int8,
+				hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+				integerOffset = true
+			}
+		}
+		if !integerOffset {
+			a.appendDiagnostic(infixExpr.Right.Position(), "pointer arithmetic requires an integer offset, got `%s`", offsetType)
+			return nil, false
+		}
+
+		elementType := leftExpr.Type()
+		elementType.Pointer--
+		if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
+			if elementType.Base == hir.StructType && a.structs[elementType.Struct].Opaque {
+				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.structs[elementType.Struct].Name)
+			} else {
+				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type, got `%s`", elementType)
+			}
+			return nil, false
+		}
+		return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
 	}
 
-	if leftExpr.Type().Pointer > 0 {
-		// pointer arithmetic currently unsupported
+	if leftExpr.Type() != rightExpr.Type() {
+		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different.")
 		return nil, false
 	}
 
