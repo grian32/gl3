@@ -268,9 +268,16 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary
 		return nil, false
 	}
 
+	boolType := hir.Type{Base: hir.Bool}
+
 	switch leftExpr.Type().Base {
 	case hir.Int, hir.Int32, hir.Int16, hir.Int8,
 		hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+		unsigned := false
+		switch leftExpr.Type().Base {
+		case hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+			unsigned = true
+		}
 		switch infixExpr.Operator {
 		case "+":
 			return makeBinaryNode(hir.IntAdd, leftExpr, rightExpr, leftExpr.Type()), true
@@ -280,11 +287,38 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary
 			return makeBinaryNode(hir.IntMultiply, leftExpr, rightExpr, leftExpr.Type()), true
 		case "/":
 			op := hir.SignedDivide
-			switch leftExpr.Type().Base {
-			case hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
+			if unsigned {
 				op = hir.UnsignedDivide
 			}
 			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+		case "==":
+			return makeBinaryNode(hir.IntEqual, leftExpr, rightExpr, boolType), true
+		case "!=":
+			return makeBinaryNode(hir.IntNotEqual, leftExpr, rightExpr, boolType), true
+		case "<":
+			op := hir.SignedLess
+			if unsigned {
+				op = hir.UnsignedLess
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+		case "<=":
+			op := hir.SignedLessEqual
+			if unsigned {
+				op = hir.UnsignedLessEqual
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+		case ">":
+			op := hir.SignedGreater
+			if unsigned {
+				op = hir.UnsignedGreater
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+		case ">=":
+			op := hir.SignedGreaterEqual
+			if unsigned {
+				op = hir.UnsignedGreaterEqual
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
 		}
 	case hir.Float:
 		switch infixExpr.Operator {
@@ -296,10 +330,33 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary
 			return makeBinaryNode(hir.FloatMultiply, leftExpr, rightExpr, leftExpr.Type()), true
 		case "/":
 			return makeBinaryNode(hir.FloatDivide, leftExpr, rightExpr, leftExpr.Type()), true
+		case "==":
+			return makeBinaryNode(hir.FloatEqual, leftExpr, rightExpr, boolType), true
+		case "!=":
+			return makeBinaryNode(hir.FloatNotEqual, leftExpr, rightExpr, boolType), true
+		case "<":
+			return makeBinaryNode(hir.FloatLess, leftExpr, rightExpr, boolType), true
+		case "<=":
+			return makeBinaryNode(hir.FloatLessEqual, leftExpr, rightExpr, boolType), true
+		case ">":
+			return makeBinaryNode(hir.FloatGreater, leftExpr, rightExpr, boolType), true
+		case ">=":
+			return makeBinaryNode(hir.FloatGreaterEqual, leftExpr, rightExpr, boolType), true
+		}
+	case hir.Bool:
+		switch infixExpr.Operator {
+		case "&&":
+			return makeBinaryNode(hir.BoolAnd, leftExpr, rightExpr, leftExpr.Type()), true
+		case "||":
+			return makeBinaryNode(hir.BoolOr, leftExpr, rightExpr, leftExpr.Type()), true
+		case "==":
+			return makeBinaryNode(hir.BoolEqual, leftExpr, rightExpr, leftExpr.Type()), true
+		case "!=":
+			return makeBinaryNode(hir.BoolNotEqual, leftExpr, rightExpr, leftExpr.Type()), true
 		}
 	}
 
-	a.appendDiagnostic(infixExpr.Position(), "unsupported op.")
+	a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on types `%s` and `%s`.", infixExpr.Operator, leftExpr.Type(), rightExpr.Type())
 	return nil, false
 }
 

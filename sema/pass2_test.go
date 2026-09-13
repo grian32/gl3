@@ -59,6 +59,26 @@ var pass2ExpressionTests = []struct {
 	{name: "float FloatLessEqual", source: `fnc sample(float a, float b) -> bool { return a <= b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.FloatLessEqual, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 1}}},
 	{name: "float FloatGreater", source: `fnc sample(float a, float b) -> bool { return a > b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.FloatGreater, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 1}}},
 	{name: "float FloatGreaterEqual", source: `fnc sample(float a, float b) -> bool { return a >= b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.FloatGreaterEqual, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 1}}},
+	{
+		name:   "BoolEqual",
+		source: `fnc sample(bool a, bool b) -> bool { return a == b }`,
+		want: &ast.Binary{
+			ExprInfo: ast.Info(ast.Bool),
+			Op:       ast.BoolEqual,
+			Left:     &ast.LocalRef{ExprInfo: ast.Info(ast.Bool), ID: 0},
+			Right:    &ast.LocalRef{ExprInfo: ast.Info(ast.Bool), ID: 1},
+		},
+	},
+	{
+		name:   "BoolNotEqual",
+		source: `fnc sample(bool a, bool b) -> bool { return a != b }`,
+		want: &ast.Binary{
+			ExprInfo: ast.Info(ast.Bool),
+			Op:       ast.BoolNotEqual,
+			Left:     &ast.LocalRef{ExprInfo: ast.Info(ast.Bool), ID: 0},
+			Right:    &ast.LocalRef{ExprInfo: ast.Info(ast.Bool), ID: 1},
+		},
+	},
 	{name: "BoolAnd", source: `fnc sample(bool a, bool b) -> bool { return a && b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.BoolAnd, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 1}}},
 	{name: "BoolOr", source: `fnc sample(bool a, bool b) -> bool { return a || b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.BoolOr, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 1}}},
 	{name: "IdentityCast", source: `fnc sample(int32 x) -> int32 { return x as int32 }`, want: &ast.Cast{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Kind: ast.IdentityCast, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}},
@@ -180,7 +200,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"could not find symbol", "missing"}, line: 2}}},
 	{name: "local type", source: `fnc sample() -> int32 {
  def Missing x = 1i32 return 0i32
-}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"type", "Missing"}, line: 2}}},
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid type", "local declaration", "`x`"}, line: 2}}},
 	{name: "void local", source: `fnc sample() -> int32 {
  def none x = 1i32 return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"none"}, line: 2}}},
@@ -213,7 +233,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},
 	{name: "logical integer", source: `fnc sample() -> int32 {
  def bool x = 1i32 && 2i32 return 0i32
-}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "&&", "int32"}, line: 2}}},
 	{name: "negate boolean", source: `fnc sample() -> int32 {
  def bool x = -true return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},

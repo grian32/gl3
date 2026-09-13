@@ -162,6 +162,8 @@ const (
 	FloatGreaterEqual
 	BoolAnd
 	BoolOr
+	BoolEqual
+	BoolNotEqual
 	PointerAdd
 	PointerSubtract
 )
