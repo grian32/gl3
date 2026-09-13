@@ -100,6 +100,18 @@ var pass2ExpressionTests = []struct {
 	{name: "sizeof", source: `fnc sample() -> uint { return sizeof int32 }`, want: &ast.Sizeof{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint}}, OperandType: ast.Type{Base: ast.Int32}}},
 	{name: "array literal", source: `fnc sample() -> int32* { return [int32; 1i32, 2i32] }`, want: &ast.ArrayLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ElementType: ast.Type{Base: ast.Int32}, Items: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}}}},
 	{name: "struct literal", source: `struct Pair { int32 x bool y } fnc sample() -> Pair { return Pair:{1i32,true} }`, want: &ast.StructLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType}}, Fields: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},
+	{
+		name:   "address field",
+		source: `struct Pair { bool x int32 y } fnc sample(Pair p) -> int32* { return &p.y }`,
+		want: &ast.AddressOf{
+			ExprInfo: ast.InfoPtr(ast.Int32, 1),
+			Target: &ast.FieldPlace{
+				ExprInfo:   ast.Info(ast.Int32),
+				Base:       &ast.LocalPlace{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType, Struct: 0}}, ID: 0},
+				FieldIndex: 1,
+			},
+		},
+	},
 	{name: "field index follows declaration order", source: `struct Pair { bool x int32 y } fnc sample(Pair p) -> int32 { return p.y }`, want: &ast.FieldAccess{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Base: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType}}, ID: 0}, FieldIndex: 1}},
 	{name: "forward call", source: `fnc sample() -> int32 { return later(7i32) } fnc later(int32 x) -> int32 { return x }`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 1, Args: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
 	{name: "recursive call", source: `fnc sample(int32 x) -> int32 { return sample(x) }`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 0, Args: []ast.Expr{&ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}}},
@@ -144,7 +156,7 @@ fnc size() -> uint { return sizeof Wrapper }`, diagnostics: []expectedDiagnostic
 	{name: "opaque sizeof", source: `extern struct Handle
 fnc size() -> uint { return sizeof Handle }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
 	{name: "opaque field access", source: `extern struct Handle
-fnc read(Handle* handle) -> int32 { return (*handle).value }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
+fnc read(Handle* handle) -> int32 { return (*handle).value }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
 	{name: "opaque struct literal", source: `extern struct Handle
 fnc create() -> none { Handle:{} }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
 

@@ -334,7 +334,44 @@ func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
 	}, true
 }
 
-func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (*hir.Binary, bool) {
+func (a *Analyzer) resolveField(baseType hir.Type, expr *parser.InfixExpression) (int, bool) {
+	if baseType.Base != hir.StructType || baseType.Pointer != 0 {
+		a.appendDiagnostic(expr.Position(), "cannot access field on non-struct type `%s`", baseType)
+		return 0, false
+	}
+	s := a.structs[baseType.Struct]
+	fieldIdent, ok := expr.Right.(*parser.IdentifierExpression)
+	if !ok {
+		a.appendDiagnostic(expr.Right.Position(), "non identifier is not allowed on rhs of struct access")
+		return 0, false
+	}
+	idx, ok := s.FieldNames[fieldIdent.Value]
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "field `%s` does not exist on struct `%s`", fieldIdent.Value, s.Name)
+		return 0, false
+	}
+	return idx, true
+}
+
+func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, bool) {
+	if infixExpr.Operator == "." {
+		left, ok := a.checkExpr(infixExpr.Left)
+		if !ok {
+			return nil, false
+		}
+		idx, ok := a.resolveField(left.Type(), infixExpr)
+		if !ok {
+			return nil, false
+		}
+		field := a.structs[left.Type().Struct].Fields[idx]
+
+		return &hir.FieldAccess{
+			ExprInfo:   hir.ExprInfo{ResultType: field.Type},
+			Base:       left,
+			FieldIndex: idx,
+		}, true
+	}
+
 	leftExpr, ok := a.checkExpr(infixExpr.Left)
 	if !ok {
 		return nil, false
@@ -495,7 +532,15 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 		return nil, false
 	}
 
-	if gp, ok := place.(*hir.GlobalPlace); ok && a.globals[gp.ID].Constant {
+	root := place
+	for {
+		field, ok := root.(*hir.FieldPlace)
+		if !ok {
+			break
+		}
+		root = field.Base
+	}
+	if gp, ok := root.(*hir.GlobalPlace); ok && a.globals[gp.ID].Constant {
 		a.appendDiagnostic(assignExpr.Position(), "modifying constant globals is not permitted.")
 		return nil, false
 	}
@@ -554,6 +599,21 @@ func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
 		return &hir.DerefPlace{
 			ExprInfo: hir.ExprInfo{ResultType: t},
 			Pointer:  expr,
+		}, true
+	} else if fieldExpr, ok := expr.(*parser.InfixExpression); ok && fieldExpr.Operator == "." {
+		base, ok := a.checkPlace(fieldExpr.Left)
+		if !ok {
+			return nil, false
+		}
+		idx, ok := a.resolveField(base.Type(), fieldExpr)
+		if !ok {
+			return nil, false
+		}
+		field := a.structs[base.Type().Struct].Fields[idx]
+		return &hir.FieldPlace{
+			ExprInfo:   hir.ExprInfo{ResultType: field.Type},
+			Base:       base,
+			FieldIndex: idx,
 		}, true
 	}
 
