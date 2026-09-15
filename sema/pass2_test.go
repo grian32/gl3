@@ -152,9 +152,9 @@ fnc next(Handle* p) -> Handle* { return p + 1 }`, diagnostics: []expectedDiagnos
 fnc read(Handle* p) -> none { *p }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
 	{name: "sizeof struct containing opaque field requires a sized type", source: `extern struct Handle
 struct Wrapper { Handle handle }
-fnc size() -> uint { return sizeof Wrapper }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Wrapper", "size"}, line: 3}}},
+fnc size() -> uint { return sizeof Wrapper }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"sizeof", "unsized type", "not allowed"}, line: 3}}},
 	{name: "opaque sizeof", source: `extern struct Handle
-fnc size() -> uint { return sizeof Handle }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
+fnc size() -> uint { return sizeof Handle }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"sizeof", "unsized type", "not allowed"}, line: 2}}},
 	{name: "opaque field access", source: `extern struct Handle
 fnc read(Handle* handle) -> int32 { return (*handle).value }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
 	{name: "unknown struct literal", source: `fnc sample() -> none {
@@ -206,7 +206,7 @@ fnc sample(int32 x) -> none { x as none }`, diagnostics: []expectedDiagnostic{{m
 	{name: "unsigned overflow", source: `
 fnc sample() -> uint8 { return 256u8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Uint8"}, line: 2}}},
 	{name: "sizeof unknown type", source: `
-fnc sample() -> uint { return sizeof Missing }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Missing"}, line: 2}}},
+fnc sample() -> uint { return sizeof Missing }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid type", "sizeof"}, line: 2}}},
 	{name: "array invalid element type", source: `
 fnc sample() -> none { [Missing;] }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Missing"}, line: 2}}},
 	{name: "constant field assignment", source: `struct S { int32 x } global const S value = S:{1i32}
@@ -386,6 +386,18 @@ var pass2GlobalTests = []struct {
 	name, source string
 	want         []ast.Global
 }{
+	{
+		name:   "constant sizeof",
+		source: `global const uint size = sizeof int32`,
+		want: []ast.Global{{
+			Name: "size", Id: 0, Constant: true,
+			Type: ast.Type{Base: ast.Uint},
+			Initializer: &ast.Sizeof{
+				ExprInfo:    ast.Info(ast.Uint),
+				OperandType: ast.Type{Base: ast.Int32},
+			},
+		}},
+	},
 	{name: "mutable integer", source: `global int32 value = 7i32`, want: []ast.Global{{Name: "value", Id: 0, Constant: false, Type: ast.Type{Base: ast.Int32}, Initializer: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
 	{name: "constant integer", source: `global const int32 value = 7i32`, want: []ast.Global{{Name: "value", Id: 0, Constant: true, Type: ast.Type{Base: ast.Int32}, Initializer: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
 	{name: "boolean", source: `global bool value = true`, want: []ast.Global{{Name: "value", Id: 0, Constant: false, Type: ast.Type{Base: ast.Bool}, Initializer: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},

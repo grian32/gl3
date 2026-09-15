@@ -241,8 +241,27 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkRef(expr)
 	case *parser.StructInitializationExpression:
 		return a.checkStructLiteral(expr)
+	case *parser.SizeofExpression:
+		return a.checkSizeof(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool) {
+	t, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "invalid type for sizeof")
+		return nil, false
+	}
+	if !a.isSized(t, make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(expr.Position(), "sizeof unsized type is not allowed")
+		return nil, false
+	}
+
+	return &hir.Sizeof{
+		ExprInfo:    hir.Info(hir.Uint),
+		OperandType: t,
+	}, true
 }
 
 func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpression) (*hir.StructLiteral, bool) {
@@ -1125,7 +1144,7 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 func isConstantInitializer(expr hir.Expr) bool {
 	switch expr := expr.(type) {
 	case *hir.IntegerLiteral, *hir.FloatLiteral,
-		*hir.BooleanLiteral, *hir.StringLiteral:
+		*hir.BooleanLiteral, *hir.StringLiteral, *hir.Sizeof:
 		return true
 	case *hir.StructLiteral:
 		for _, field := range expr.Fields {
