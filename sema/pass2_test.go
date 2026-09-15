@@ -157,8 +157,15 @@ fnc size() -> uint { return sizeof Wrapper }`, diagnostics: []expectedDiagnostic
 fnc size() -> uint { return sizeof Handle }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
 	{name: "opaque field access", source: `extern struct Handle
 fnc read(Handle* handle) -> int32 { return (*handle).value }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
+	{name: "unknown struct literal", source: `fnc sample() -> none {
+ Missing:{1i32}
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"symbol does not exist"}, line: 2}}},
+	{name: "nested struct runtime initializer", source: `struct Inner { int32 x }
+struct Outer { Inner inner }
+fnc runtime() -> int32 { return 7i32 }
+global const Outer value = Outer:{Inner:{runtime()}}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant", "initializer"}, line: 4}}},
 	{name: "opaque struct literal", source: `extern struct Handle
-fnc create() -> none { Handle:{} }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Handle", "opaque"}, line: 2}}},
+fnc create() -> none { Handle:{} }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"struct literals", "opaque", "not allowed"}, line: 2}}},
 
 	{
 		name:        "top level expression is forbidden",
@@ -203,7 +210,7 @@ fnc sample() -> uint { return sizeof Missing }`, diagnostics: []expectedDiagnost
 	{name: "array invalid element type", source: `
 fnc sample() -> none { [Missing;] }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Missing"}, line: 2}}},
 	{name: "constant field assignment", source: `struct S { int32 x } global const S value = S:{1i32}
-fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant", "value"}, line: 2}}},
+fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant globals", "not permitted"}, line: 2}}},
 	{name: "unknown local", source: `fnc sample() -> int32 {
  return missing
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unknown", "missing"}, line: 2}}},
@@ -383,6 +390,26 @@ var pass2GlobalTests = []struct {
 	{name: "constant integer", source: `global const int32 value = 7i32`, want: []ast.Global{{Name: "value", Id: 0, Constant: true, Type: ast.Type{Base: ast.Int32}, Initializer: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
 	{name: "boolean", source: `global bool value = true`, want: []ast.Global{{Name: "value", Id: 0, Constant: false, Type: ast.Type{Base: ast.Bool}, Initializer: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},
 	{name: "struct", source: `struct S { int32 x } global S value = S:{7i32}`, want: []ast.Global{{Name: "value", Id: 0, Constant: false, Type: ast.Type{Base: ast.StructType}, Initializer: &ast.StructLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType}}, Fields: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}}}},
+	{
+		name: "nested constant struct",
+		source: `struct Inner { int32 x }
+struct Outer { bool enabled Inner inner }
+global const Outer value = Outer:{true, Inner:{7i32}}`,
+		want: []ast.Global{{
+			Name: "value", Id: 0, Constant: true,
+			Type: ast.Type{Base: ast.StructType, Struct: 1},
+			Initializer: &ast.StructLiteral{
+				ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType, Struct: 1}},
+				Fields: []ast.Expr{
+					&ast.BooleanLiteral{ExprInfo: ast.Info(ast.Bool), Value: true},
+					&ast.StructLiteral{
+						ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType, Struct: 0}},
+						Fields:   []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.Info(ast.Int32), Value: 7}},
+					},
+				},
+			},
+		}},
+	},
 }
 
 func TestPass2Globals(t *testing.T) {

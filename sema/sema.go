@@ -239,8 +239,57 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkDeref(expr)
 	case *parser.ReferenceExpression:
 		return a.checkRef(expr)
+	case *parser.StructInitializationExpression:
+		return a.checkStructLiteral(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpression) (*hir.StructLiteral, bool) {
+	symbol, ok := a.symbols[expr.Name]
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "symbol does not exist")
+		return nil, false
+	}
+	structId, ok := symbol.(hir.StructID)
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "`%s` is not struct", expr.Name)
+		return nil, false
+	}
+	s := a.structs[structId]
+	if s.Opaque || !a.isSized(hir.Type{Base: hir.StructType, Struct: structId}, make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(expr.Position(), "struct literals for unsized or opaque structs are not allowed")
+		return nil, false
+	}
+
+	if len(s.Fields) != len(expr.Values) {
+		a.appendDiagnostic(expr.Position(), "wanted %d fields in literal for struct `%s`, got %d", len(s.Fields), s.Name, len(expr.Values))
+		return nil, false
+	}
+
+	fieldsOk := true
+	fields := []hir.Expr{}
+	for i, f := range expr.Values {
+		fieldExpr, ok := a.checkExpr(f)
+		if !ok {
+			fieldsOk = false
+			continue
+		}
+		if fieldExpr.Type() != s.Fields[i].Type {
+			a.appendDiagnostic(f.Position(), "wanted %s for field %d in literal for struct `%s`, got %s", s.Fields[i].Type, i, s.Name, fieldExpr.Type())
+			fieldsOk = false
+			continue
+		}
+		fields = append(fields, fieldExpr)
+	}
+	if !fieldsOk {
+		return nil, false
+	}
+
+	return &hir.StructLiteral{
+		ExprInfo: hir.ExprInfo{ResultType: hir.Type{Base: hir.StructType, Struct: structId}},
+		Fields:   fields,
+	}, true
 }
 
 func (a *Analyzer) checkRef(expr *parser.ReferenceExpression) (*hir.AddressOf, bool) {
@@ -1074,9 +1123,16 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 }
 
 func isConstantInitializer(expr hir.Expr) bool {
-	switch expr.(type) {
+	switch expr := expr.(type) {
 	case *hir.IntegerLiteral, *hir.FloatLiteral,
 		*hir.BooleanLiteral, *hir.StringLiteral:
+		return true
+	case *hir.StructLiteral:
+		for _, field := range expr.Fields {
+			if !isConstantInitializer(field) {
+				return false
+			}
+		}
 		return true
 	default:
 		return false
