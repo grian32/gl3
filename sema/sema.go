@@ -241,12 +241,52 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkRef(expr)
 	case *parser.StructInitializationExpression:
 		return a.checkStructLiteral(expr)
+	case *parser.ArrayLiteral:
+		return a.checkArrayLiteral(expr)
 	case *parser.CastExpression:
 		return a.checkCast(expr)
 	case *parser.SizeofExpression:
 		return a.checkSizeof(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiteral, bool) {
+	elementType, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "invalid array element type `%s`", expr.Type)
+		return nil, false
+	}
+	if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
+		a.appendDiagnostic(expr.Position(), "array element type `%s` must be sized", elementType)
+		return nil, false
+	}
+
+	var items []hir.Expr
+	itemsOk := true
+	for i, item := range expr.Items {
+		value, ok := a.checkExpr(item)
+		if !ok {
+			itemsOk = false
+			continue
+		}
+		if value.Type() != elementType {
+			a.appendDiagnostic(item.Position(), "array element %d: expected `%s`, got `%s`", i+1, elementType, value.Type())
+			itemsOk = false
+			continue
+		}
+		items = append(items, value)
+	}
+	if !itemsOk {
+		return nil, false
+	}
+	resultType := elementType
+	resultType.Pointer++
+	return &hir.ArrayLiteral{
+		ExprInfo:    hir.ExprInfo{ResultType: resultType},
+		ElementType: elementType,
+		Items:       items,
+	}, true
 }
 
 func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {
