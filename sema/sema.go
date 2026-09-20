@@ -28,6 +28,7 @@ type Analyzer struct {
 	symbols         map[string]hir.Symbol
 	currentScope    *Scope
 	currentFunction *hir.Function
+	loopDepth       int
 
 	diagnostics []Diagnostic
 }
@@ -131,6 +132,22 @@ func (a *Analyzer) checkBlock(block *parser.BlockStatement) (hir.Block, bool) {
 
 func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 	switch stmt := stmt.(type) {
+	case *parser.IfStatement:
+		return a.checkIf(stmt)
+	case *parser.WhileStatement:
+		return a.checkWhile(stmt)
+	case *parser.BreakStatement:
+		if a.loopDepth == 0 {
+			a.appendDiagnostic(stmt.Position(), "break is only allowed inside a loop")
+			return nil, false
+		}
+		return &hir.Break{}, true
+	case *parser.ContinueStatement:
+		if a.loopDepth == 0 {
+			a.appendDiagnostic(stmt.Position(), "continue is only allowed inside a loop")
+			return nil, false
+		}
+		return &hir.Continue{}, true
 	case *parser.ExpressionStatement:
 		expr, ok := a.checkExpr(stmt.Expression)
 		if !ok {
@@ -203,7 +220,58 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		}, true
 	}
 
-	return nil, true
+	a.appendDiagnostic(stmt.Position(), "unsupported statement `%s`", stmt.TokenLiteral())
+	return nil, false
+}
+
+func (a *Analyzer) checkIf(stmt *parser.IfStatement) (*hir.If, bool) {
+	condition, ok := a.checkExpr(stmt.Condition)
+	if !ok {
+		return nil, false
+	}
+	if condition.Type().Base != hir.Bool || condition.Type().Pointer != 0 {
+		a.appendDiagnostic(stmt.Condition.Position(), "if condition must be bool, got `%s`", condition.Type())
+		return nil, false
+	}
+	thenBlock, ok := a.checkScopedBlock(stmt.Success)
+	if !ok {
+		return nil, false
+	}
+	var elseBlock *hir.Block
+	if stmt.Fail != nil {
+		block, ok := a.checkScopedBlock(stmt.Fail)
+		if !ok {
+			return nil, false
+		}
+		elseBlock = &block
+	}
+	return &hir.If{Condition: condition, Then: thenBlock, Else: elseBlock}, true
+}
+
+func (a *Analyzer) checkWhile(stmt *parser.WhileStatement) (*hir.While, bool) {
+	condition, ok := a.checkExpr(stmt.Condition)
+	if !ok {
+		return nil, false
+	}
+	if condition.Type().Base != hir.Bool || condition.Type().Pointer != 0 {
+		a.appendDiagnostic(stmt.Condition.Position(), "while condition must be bool, got `%s`", condition.Type())
+		return nil, false
+	}
+	a.loopDepth++
+	body, ok := a.checkScopedBlock(stmt.Body)
+	a.loopDepth--
+	if !ok {
+		return nil, false
+	}
+	return &hir.While{Condition: condition, Body: body}, true
+}
+
+func (a *Analyzer) checkScopedBlock(block *parser.BlockStatement) (hir.Block, bool) {
+	parent := a.currentScope
+	a.currentScope = &Scope{Symbols: make(map[string]hir.Symbol), Parent: parent}
+	checked, ok := a.checkBlock(block)
+	a.currentScope = parent
+	return checked, ok
 }
 
 func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
