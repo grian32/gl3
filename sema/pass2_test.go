@@ -81,6 +81,11 @@ var pass2ExpressionTests = []struct {
 	},
 	{name: "BoolAnd", source: `fnc sample(bool a, bool b) -> bool { return a && b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.BoolAnd, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 1}}},
 	{name: "BoolOr", source: `fnc sample(bool a, bool b) -> bool { return a || b }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Op: ast.BoolOr, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, ID: 1}}},
+	{
+		name:   "BoolToInt",
+		source: `fnc sample(bool x) -> int32 { return x as int32 }`,
+		want:   &ast.Cast{ExprInfo: ast.Info(ast.Int32), Kind: ast.ZeroExtend, Value: &ast.LocalRef{ExprInfo: ast.Info(ast.Bool), ID: 0}},
+	},
 	{name: "IdentityCast", source: `fnc sample(int32 x) -> int32 { return x as int32 }`, want: &ast.Cast{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Kind: ast.IdentityCast, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}},
 	{name: "SignExtend", source: `fnc sample(int8 x) -> int32 { return x as int32 }`, want: &ast.Cast{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Kind: ast.SignExtend, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int8}}, ID: 0}}},
 	{name: "ZeroExtend", source: `fnc sample(uint8 x) -> uint32 { return x as uint32 }`, want: &ast.Cast{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint32}}, Kind: ast.ZeroExtend, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint8}}, ID: 0}}},
@@ -199,6 +204,9 @@ fnc sample(int32* a) -> int32 { return a[1.5] }`, diagnostics: []expectedDiagnos
 fnc sample(bool x) -> int32 { if x { return 1i32 } }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return"}, line: 2}}},
 	{name: "empty struct initializer", source: `struct S { int32 x }
 fnc sample() -> S { return S:{} }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"field"}, line: 2}}},
+	{name: "cast integer to bool", source: `fnc sample(int32 x) -> bool { return x as bool }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot cast", "int32", "bool"}, line: 1}}},
+	{name: "cast runtime global initializer", source: `fnc runtime() -> int32 { return 7i32 }
+global int value = runtime() as int`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant", "initializer"}, line: 2}}},
 	{name: "cast unknown type", source: `
 fnc sample(int32 x) -> int32 { return x as Missing }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"Missing"}, line: 2}}},
 	{name: "cast to none", source: `
@@ -397,6 +405,14 @@ var pass2GlobalTests = []struct {
 				OperandType: ast.Type{Base: ast.Int32},
 			},
 		}},
+	},
+	{
+		name:   "constant pointer cast",
+		source: `struct Node { int32 value } global Node* head = 0 as Node*`,
+		want: []ast.Global{{Name: "head", Id: 0, Type: ast.Type{Base: ast.StructType, Pointer: 1}, Initializer: &ast.Cast{
+			ExprInfo: ast.InfoPtr(ast.StructType, 1), Kind: ast.IntToPointer,
+			Value: &ast.IntegerLiteral{ExprInfo: ast.Info(ast.Int), Value: 0},
+		}}},
 	},
 	{name: "mutable integer", source: `global int32 value = 7i32`, want: []ast.Global{{Name: "value", Id: 0, Constant: false, Type: ast.Type{Base: ast.Int32}, Initializer: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
 	{name: "constant integer", source: `global const int32 value = 7i32`, want: []ast.Global{{Name: "value", Id: 0, Constant: true, Type: ast.Type{Base: ast.Int32}, Initializer: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},

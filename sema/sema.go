@@ -241,10 +241,100 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.checkRef(expr)
 	case *parser.StructInitializationExpression:
 		return a.checkStructLiteral(expr)
+	case *parser.CastExpression:
+		return a.checkCast(expr)
 	case *parser.SizeofExpression:
 		return a.checkSizeof(expr)
 	}
 	return nil, false
+}
+
+func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {
+	value, ok := a.checkExpr(expr.Expr)
+	if !ok {
+		return nil, false
+	}
+	target, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	if !ok {
+		a.appendDiagnostic(expr.Position(), "invalid cast target type `%s`", expr.Type)
+		return nil, false
+	}
+	source := value.Type()
+	if (target.Base == hir.Void && target.Pointer == 0) || (source.Base == hir.Void && source.Pointer == 0) {
+		a.appendDiagnostic(expr.Position(), "cannot cast from `%s` to `%s`", source, target)
+		return nil, false
+	}
+
+	sourceBits, sourceSigned := castIntegerInfo(source)
+	targetBits, targetSigned := castIntegerInfo(target)
+	kind := hir.InvalidCastKind
+	switch {
+	case source == target:
+		kind = hir.IdentityCast
+	case source.Base == hir.Bool && source.Pointer == 0 && targetBits != 0:
+		kind = hir.ZeroExtend
+	case source.Pointer > 0 && target.Pointer > 0:
+		kind = hir.PointerCast
+	case source.Pointer > 0 && targetBits != 0:
+		kind = hir.PointerToInt
+	case sourceBits != 0 && target.Pointer > 0:
+		kind = hir.IntToPointer
+	case sourceBits != 0 && targetBits != 0:
+		switch {
+		case sourceBits == targetBits:
+			kind = hir.IdentityCast
+		case sourceBits > targetBits:
+			kind = hir.Truncate
+		case sourceSigned:
+			kind = hir.SignExtend
+		default:
+			kind = hir.ZeroExtend
+		}
+	case sourceBits != 0 && target.Base == hir.Float && target.Pointer == 0:
+		kind = hir.UnsignedIntToFloat
+		if sourceSigned {
+			kind = hir.SignedIntToFloat
+		}
+	case source.Base == hir.Float && source.Pointer == 0 && targetBits != 0:
+		kind = hir.FloatToUnsignedInt
+		if targetSigned {
+			kind = hir.FloatToSignedInt
+		}
+	}
+	if kind == hir.InvalidCastKind {
+		a.appendDiagnostic(expr.Position(), "cannot cast from `%s` to `%s`", source, target)
+		return nil, false
+	}
+	return &hir.Cast{
+		ExprInfo: hir.ExprInfo{ResultType: target},
+		Kind:     kind,
+		Value:    value,
+	}, true
+}
+
+func castIntegerInfo(t hir.Type) (bits uint8, signed bool) {
+	if t.Pointer != 0 {
+		return 0, false
+	}
+	switch t.Base {
+	case hir.Int:
+		return 64, true
+	case hir.Int32:
+		return 32, true
+	case hir.Int16:
+		return 16, true
+	case hir.Int8, hir.Char:
+		return 8, true
+	case hir.Uint:
+		return 64, false
+	case hir.Uint32:
+		return 32, false
+	case hir.Uint16:
+		return 16, false
+	case hir.Uint8:
+		return 8, false
+	}
+	return 0, false
 }
 
 func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool) {
@@ -1146,6 +1236,8 @@ func isConstantInitializer(expr hir.Expr) bool {
 	case *hir.IntegerLiteral, *hir.FloatLiteral,
 		*hir.BooleanLiteral, *hir.StringLiteral, *hir.Sizeof:
 		return true
+	case *hir.Cast:
+		return isConstantInitializer(expr.Value)
 	case *hir.StructLiteral:
 		for _, field := range expr.Fields {
 			if !isConstantInitializer(field) {
