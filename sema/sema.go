@@ -38,19 +38,28 @@ func New() *Analyzer {
 }
 
 func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic) /* todo: diag */ {
+	// pass 1.0 assigns ids to functions/structs/globals
 	if !a.assignIDs(program) {
 		goto end
 	}
 
+	// pass 1.1 populates fields and function parameters
 	if !a.populateFieldsFunctions(program) {
 		goto end
 	}
 
+	// pass 1.2 checks for parameters and global types being sized
 	if !a.checkSizedDeclarations() {
 		goto end
 	}
 
+	// pass 2.0 checks all expressions and produces the final hir
 	if !a.checkBodies() {
+		goto end
+	}
+
+	// pass 2.1 checks if all functions return
+	if !a.checkReturns() {
 		goto end
 	}
 
@@ -60,6 +69,43 @@ end:
 		Functions: a.functions,
 		Globals:   a.globals,
 	}, a.diagnostics
+}
+
+func (a *Analyzer) checkReturns() bool {
+	valid := true
+	for i, f := range a.functions {
+		if f.External || (f.ReturnType.Base == hir.Void && f.ReturnType.Pointer == 0) {
+			continue
+		}
+		if blockFallsThrough(f.Body) {
+			a.appendDiagnostic(a.functionPostions[i], "function `%s` can reach the end without returning `%s`", f.Name, f.ReturnType)
+			valid = false
+		}
+	}
+	return valid
+}
+
+func blockFallsThrough(block hir.Block) bool {
+	for _, stmt := range block.Statements {
+		if !statementFallsThrough(stmt) {
+			return false
+		}
+	}
+	return true
+}
+
+func statementFallsThrough(stmt hir.Stmt) bool {
+	switch stmt := stmt.(type) {
+	case *hir.Return:
+		return false
+	case *hir.If:
+		if stmt.Else == nil {
+			return true
+		}
+		return blockFallsThrough(stmt.Then) || blockFallsThrough(*stmt.Else)
+	default:
+		return true
+	}
 }
 
 func (a *Analyzer) checkBodies() bool {
