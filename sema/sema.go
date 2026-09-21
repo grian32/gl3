@@ -1146,6 +1146,7 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 		a.symbols[node.Name] = id
 	case *parser.DefStatement:
 		if !node.Global {
+			a.appendDiagnostic(node.Position(), "top level expressions are not allowed")
 			break
 		}
 
@@ -1162,6 +1163,12 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 		a.globalPositions = append(a.globalPositions, node.Position())
 		a.globalInitializers = append(a.globalInitializers, node.Right)
 		a.symbols[node.Name.Value] = id
+	case *parser.ImportStatement:
+		// TODO
+		return true
+	default:
+		a.appendDiagnostic(node.Position(), "top level expressions are not allowed")
+		return false
 	}
 
 	return true
