@@ -755,6 +755,8 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		}, true
 	}
 
+	boolType := hir.Type{Base: hir.Bool}
+
 	leftExpr, ok := a.checkExpr(infixExpr.Left)
 	if !ok {
 		return nil, false
@@ -764,6 +766,19 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		return nil, false
 	}
 	if leftExpr.Type().Pointer > 0 {
+		// ptr eq ne
+		if infixExpr.Operator == "==" || infixExpr.Operator == "!=" {
+			if leftExpr.Type() != rightExpr.Type() {
+				a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different: left is `%s`, right is `%s`", leftExpr.Type(), rightExpr.Type())
+				return nil, false
+			}
+			op := hir.IntEqual
+			if infixExpr.Operator == "!=" {
+				op = hir.IntNotEqual
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+		}
+
 		op := hir.PointerAdd
 		if infixExpr.Operator == "-" {
 			op = hir.PointerSubtract
@@ -800,11 +815,9 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 	}
 
 	if leftExpr.Type() != rightExpr.Type() {
-		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different.")
+		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different: left is `%s`, right is `%s`", leftExpr.Type(), rightExpr.Type())
 		return nil, false
 	}
-
-	boolType := hir.Type{Base: hir.Bool}
 
 	switch leftExpr.Type().Base {
 	case hir.Int, hir.Int32, hir.Int16, hir.Int8,

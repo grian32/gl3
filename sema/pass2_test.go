@@ -101,6 +101,26 @@ var pass2ExpressionTests = []struct {
 	{name: "address local", source: `fnc sample(int32 x) -> int32* { return &x }`, want: &ast.AddressOf{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, Target: &ast.LocalPlace{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}},
 	{name: "PointerAdd", source: `fnc sample(int32* x, int i) -> int32* { return x + i }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, Op: ast.PointerAdd, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int}}, ID: 1}}},
 	{name: "PointerSubtract", source: `fnc sample(int32* x, int i) -> int32* { return x - i }`, want: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, Op: ast.PointerSubtract, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int}}, ID: 1}}},
+	{
+		name:   "PointerEqual",
+		source: `fnc sample(int32* a, int32* b) -> bool { return a == b }`,
+		want: &ast.Binary{
+			ExprInfo: ast.Info(ast.Bool),
+			Op:       ast.IntEqual,
+			Left:     &ast.LocalRef{ExprInfo: ast.InfoPtr(ast.Int32, 1), ID: 0},
+			Right:    &ast.LocalRef{ExprInfo: ast.InfoPtr(ast.Int32, 1), ID: 1},
+		},
+	},
+	{
+		name:   "PointerNotEqual",
+		source: `fnc sample(int32* a, int32* b) -> bool { return a != b }`,
+		want: &ast.Binary{
+			ExprInfo: ast.Info(ast.Bool),
+			Op:       ast.IntNotEqual,
+			Left:     &ast.LocalRef{ExprInfo: ast.InfoPtr(ast.Int32, 1), ID: 0},
+			Right:    &ast.LocalRef{ExprInfo: ast.InfoPtr(ast.Int32, 1), ID: 1},
+		},
+	},
 	{name: "index lowers to pointer add and dereference", source: `fnc sample(int32* x, int i) -> int32 { return x[i] }`, want: &ast.Dereference{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Pointer: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, Op: ast.PointerAdd, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int}}, ID: 1}}}},
 	{name: "sizeof", source: `fnc sample() -> uint { return sizeof int32 }`, want: &ast.Sizeof{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint}}, OperandType: ast.Type{Base: ast.Int32}}},
 	{name: "array literal", source: `fnc sample() -> int32* { return [int32; 1i32, 2i32] }`, want: &ast.ArrayLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ElementType: ast.Type{Base: ast.Int32}, Items: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}}}},
@@ -198,6 +218,7 @@ global int32 x = other()`, diagnostics: []expectedDiagnostic{{messageContains: [
 global int32 x = missing`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unknown", "missing"}, line: 2}}},
 	{name: "pointer plus pointer", source: `
 fnc sample(int32* a, int32* b) -> int32* { return a + b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"pointer"}, line: 2}}},
+	{name: "pointer equality with integer", source: `fnc sample(int32* a, int32 b) -> bool { return a == b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"types of operands cannot be different"}, line: 1}}},
 	{name: "float index", source: `
 fnc sample(int32* a) -> int32 { return a[1.5] }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"integer"}, line: 2}}},
 	{name: "missing return in one branch", source: `
