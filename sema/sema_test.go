@@ -393,7 +393,7 @@ func TestAnalyze(t *testing.T) {
 				return
 			}
 			assertDeclarationMetadata(t, got, &test.want)
-			assertSymbols(t, c.symbols, test.symbols)
+			assertSymbols(t, c.Symbols, test.symbols)
 		})
 	}
 }
@@ -662,7 +662,7 @@ func TestExternDeclarations(t *testing.T) {
 				return
 			}
 			assertDeclarationMetadata(t, got, &test.want)
-			assertSymbols(t, c.symbols, test.symbols)
+			assertSymbols(t, c.Symbols, test.symbols)
 			for i, want := range test.want.Functions {
 				if want.External {
 					if len(got.Functions[i].Locals) != 0 || len(got.Functions[i].Body.Statements) != 0 {

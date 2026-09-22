@@ -138,7 +138,7 @@ func TestAnalyzeScopes(t *testing.T) {
 				return
 			}
 			assertDeclarations(t, got, &test.want)
-			assertSymbols(t, c.symbols, test.symbols)
+			assertSymbols(t, c.Symbols, test.symbols)
 		})
 	}
 }

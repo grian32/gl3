@@ -4,17 +4,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
 
-	// "gl3/sema"
-	"gl3/emitter"
+	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
-	"gl3/util"
-	"io/fs"
-	"log"
-	"os"
-	"os/exec"
-	"strings"
+	"gl3/sema"
 )
 
 type BuildOpts struct {
@@ -32,144 +29,289 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 		return errors.New("multiple optimization level arguments not allowed, please use either --O1, --O2, --O3")
 	}
 
-	var llFiles []string
-	builtinModules := map[string]struct{}{}
+	ctx := &buildContext{
+		compiled:  make(map[string]*compiledModule),
+		compiling: make(map[string]bool),
+	}
+
 	for _, file := range files {
-		input, err := os.ReadFile(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		llFile, fileModules, err := compileGl3File(input, file, opts)
-		if err != nil {
+		if _, err := ctx.compileGl3File(file); err != nil {
 			return err
-		}
-		llFiles = append(llFiles, llFile)
-
-		for _, builtinModule := range fileModules {
-			builtinModules[builtinModule] = struct{}{}
-		}
-	}
-
-	for mod, _ := range builtinModules {
-		builtinOpts := opts
-		// enable optis
-		builtinOpts.O3 = true
-		builtinOpts.O1 = false
-		builtinOpts.O2 = false
-		input, err := builtinFs.ReadFile("builtins/" + mod + ".gl3")
-		if errors.Is(err, fs.ErrNotExist) {
-			input, err = builtinFs.ReadFile("builtins/" + mod + ".ll")
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			llFiles = append(llFiles, "builtins/"+mod+".ll")
-			continue
-		} else if err != nil {
-			log.Fatal(err)
-		}
-		llFile, _, err := compileGl3File(input, "builtins/"+mod+".gl3", builtinOpts)
-		if err != nil {
-			return err
-		}
-		llFiles = append(llFiles, llFile)
-	}
-
-	llFiles = append(llFiles, "-o", opts.Output)
-	if opts.Shared {
-		llFiles = append(llFiles, "-shared")
-	}
-	if opts.O1 {
-		llFiles = append(llFiles, "-O1")
-	}
-	if opts.O2 {
-		llFiles = append(llFiles, "-O2")
-	}
-	if opts.O3 {
-		llFiles = append(llFiles, "-O3")
-	}
-	if !opts.NoExecBuild {
-		cmd := exec.Command("clang", llFiles...)
-		if opts.Dbg {
-			fmt.Printf("executing: %s\n", strings.Join(cmd.Args, " "))
-		}
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("error in clang exec, out: %s, err: %w", out, err)
 		}
 	}
 
 	return nil
 }
 
-func safeRun(fn func()) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-	}()
-	fn()
-	return nil
+type compiledModule struct {
+	Program   *hir.Program
+	Interface moduleInterface
 }
 
-func compileGl3File(input []byte, file string, opts *BuildOpts) (string, []string, error) {
+type moduleInterface struct {
+	SupportingStructs []supportingStruct
+	ExportedStructs   []hir.StructID
+	ExportedFunctions []hir.Function
+	ExportedGlobals   []hir.Global
+}
+
+type structOrigin struct {
+	path string
+	id   hir.StructID
+}
+
+type supportingStruct struct {
+	decl   hir.Struct
+	origin structOrigin
+}
+
+type moduleImports struct {
+	structs   []hir.Struct
+	origins   []structOrigin
+	structIDs map[structOrigin]hir.StructID
+	functions []hir.Function
+	globals   []hir.Global
+	symbols   map[string]hir.Symbol
+}
+
+func newModuleImports() *moduleImports {
+	return &moduleImports{
+		structIDs: make(map[structOrigin]hir.StructID),
+		symbols:   make(map[string]hir.Symbol),
+	}
+}
+
+type buildContext struct {
+	compiled  map[string]*compiledModule
+	compiling map[string]bool
+}
+
+func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error) {
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if module, ok := ctx.compiled[absPath]; ok {
+		return module, nil
+	}
+	if ctx.compiling[absPath] {
+		return nil, fmt.Errorf("import cycle involving %s", absPath)
+	}
+	ctx.compiling[absPath] = true
+	defer delete(ctx.compiling, absPath)
+
+	input, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+
 	l := lexer.New(string(input))
 	p := parser.New(l)
 	program := p.ParseProgram()
-	err := safeRun(func() {
-		if opts.Dbg {
-			log.Printf("%s: %s\n", file, program)
-		}
-	})
-	if err != nil {
-		return "", nil, err
-	}
 	if len(p.Errors) != 0 {
-		for _, err := range p.Errors {
-			log.Printf("parser error: %s:%s\n", file, &err)
+		for _, parseErr := range p.Errors {
+			fmt.Printf("%s:%s\n", absPath, &parseErr)
 		}
-		return "", nil, fmt.Errorf("%s: exiting after parser errrors\n", file)
+		return nil, fmt.Errorf("%s: found parser errors", absPath)
 	}
-	// c := sema.New()
-	// c.Check(program)
-	// if len(c.Errors) != 0 {
-	// for _, err := range c.Errors {
-	// log.Printf("checker warning: %s:%s\n", file, &err)
-	// }
-	// }
 
-	e := emitter.New()
-	err = safeRun(func() {
-		e.Emit(program)
-	})
-	if len(e.Errors) != 0 {
-		for _, err := range e.Errors {
-			log.Printf("compiler error: %s:%s\n", file, &err)
+	imports := newModuleImports()
+
+	for _, stmt := range program.Statements {
+		imp, ok := stmt.(*parser.ImportStatement)
+		if !ok {
+			continue
 		}
-		return "", nil, fmt.Errorf("compiler errors\n")
-	}
-	if err != nil {
-		log.Printf("%s: recovered emitting llvm ir: %s\n", file, err)
-		return "", nil, fmt.Errorf("compiler panic\n")
-	}
-	llvmIr := e.Module()
 
-	fileName := util.GetFileNamePath(fmt.Sprintf("%s-*.ll", file))
-	llFile, err := os.CreateTemp("", fileName)
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: %w\n", file, err)
-	}
-	_, err = fmt.Fprintf(llFile, "%s", llvmIr)
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: %w\n", file, err)
-	}
-	if opts.Dbg {
-		fmt.Printf("%s llvm ir: %s", file, llvmIr)
-	}
-	err = llFile.Close()
-	if err != nil {
-		return "", nil, fmt.Errorf("%s: %w\n", file, err)
+		importPath := filepath.Join(filepath.Dir(absPath), imp.Path)
+
+		compModule, err := ctx.compileGl3File(importPath)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%d:%d: import %q: %w", absPath, imp.Position().StartLine, imp.Position().StartCol, imp.Path, err)
+		}
+		if err := imports.add(compModule.Interface); err != nil {
+			return nil, fmt.Errorf("%s:%d:%d: import %q: %w", absPath, imp.Position().StartLine, imp.Position().StartCol, imp.Path, err)
+		}
 	}
 
-	return llFile.Name(), e.BuiltinModules(), nil
+	localStructStart := len(imports.structs)
+	localFunctionStart := len(imports.functions)
+	localGlobalStart := len(imports.globals)
+
+	anal := sema.New()
+	anal.Structs = imports.structs
+	anal.Functions = imports.functions
+	anal.Globals = imports.globals
+	anal.Symbols = imports.symbols
+	analyzed, diagnostics := anal.Analyze(program)
+	if len(diagnostics) != 0 {
+		for _, d := range diagnostics {
+			fmt.Printf("%s:%d:%d: %s\n", absPath, d.Position.StartLine, d.Position.StartCol, d.Message)
+		}
+		return nil, fmt.Errorf("%s: found compiler errors", absPath)
+	}
+	// TODO: emitter
+
+	module := &compiledModule{Program: analyzed}
+	for i, decl := range analyzed.Structs {
+		if !decl.Private {
+			origin := structOrigin{path: absPath, id: decl.Id}
+			if i < localStructStart {
+				origin = imports.origins[i]
+			}
+			module.Interface.SupportingStructs = append(module.Interface.SupportingStructs, supportingStruct{decl: decl, origin: origin})
+		}
+	}
+	for i := localStructStart; i < len(analyzed.Structs); i++ {
+		decl := analyzed.Structs[i]
+		if !decl.Private {
+			module.Interface.ExportedStructs = append(module.Interface.ExportedStructs, decl.Id)
+		}
+	}
+	for i := localFunctionStart; i < len(analyzed.Functions); i++ {
+		decl := analyzed.Functions[i]
+		if !decl.Private {
+			module.Interface.ExportedFunctions = append(module.Interface.ExportedFunctions, decl)
+		}
+	}
+	for i := localGlobalStart; i < len(analyzed.Globals); i++ {
+		decl := analyzed.Globals[i]
+		if decl.Constant {
+			module.Interface.ExportedGlobals = append(module.Interface.ExportedGlobals, decl)
+		}
+	}
+
+	ctx.compiled[absPath] = module
+	return module, nil
+}
+
+func (imports *moduleImports) add(iface moduleInterface) error {
+	ids, err := imports.addStructs(iface.SupportingStructs)
+	if err != nil {
+		return err
+	}
+
+	for _, sourceID := range iface.ExportedStructs {
+		id, ok := ids[sourceID]
+		if !ok {
+			return fmt.Errorf("exported struct has invalid id %d", sourceID)
+		}
+		if err := imports.addSymbol(imports.structs[id].Name, id); err != nil {
+			return err
+		}
+	}
+	if err := imports.addFunctions(iface.ExportedFunctions, ids); err != nil {
+		return err
+	}
+	return imports.addGlobals(iface.ExportedGlobals, ids)
+}
+
+func (imports *moduleImports) addStructs(supporting []supportingStruct) (map[hir.StructID]hir.StructID, error) {
+	ids := make(map[hir.StructID]hir.StructID, len(supporting))
+	var added []hir.Struct
+
+	for _, item := range supporting {
+		decl := item.decl
+		if id, exists := imports.structIDs[item.origin]; exists {
+			ids[decl.Id] = id
+			continue
+		}
+
+		id := hir.StructID(len(imports.structs))
+		ids[decl.Id] = id
+		imports.structIDs[item.origin] = id
+		imports.origins = append(imports.origins, item.origin)
+		added = append(added, decl)
+
+		decl.Id = id
+		decl.Fields = nil
+		decl.FieldNames = maps.Clone(decl.FieldNames)
+		imports.structs = append(imports.structs, decl)
+	}
+
+	// All IDs must exist before remapping fields, including self references.
+	for _, decl := range added {
+		fields := make([]hir.TypedName, len(decl.Fields))
+		for i, field := range decl.Fields {
+			fieldType, err := remapImportedType(field.Type, ids)
+			if err != nil {
+				return nil, err
+			}
+			fields[i] = hir.TypedName{Name: field.Name, Type: fieldType}
+		}
+		imports.structs[ids[decl.Id]].Fields = fields
+	}
+	return ids, nil
+}
+
+func (imports *moduleImports) addFunctions(functions []hir.Function, structIDs map[hir.StructID]hir.StructID) error {
+	for _, source := range functions {
+		returnType, err := remapImportedType(source.ReturnType, structIDs)
+		if err != nil {
+			return err
+		}
+		parameters := make([]hir.TypedName, len(source.Parameters))
+		for i, parameter := range source.Parameters {
+			parameterType, err := remapImportedType(parameter.Type, structIDs)
+			if err != nil {
+				return err
+			}
+			parameters[i] = hir.TypedName{Name: parameter.Name, Type: parameterType}
+		}
+
+		id := hir.FunctionID(len(imports.functions))
+		imports.functions = append(imports.functions, hir.Function{
+			Name:           source.Name,
+			Id:             id,
+			Parameters:     parameters,
+			ParameterNames: maps.Clone(source.ParameterNames),
+			ReturnType:     returnType,
+			External:       true,
+		})
+		if err := imports.addSymbol(source.Name, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (imports *moduleImports) addGlobals(globals []hir.Global, structIDs map[hir.StructID]hir.StructID) error {
+	for _, source := range globals {
+		globalType, err := remapImportedType(source.Type, structIDs)
+		if err != nil {
+			return err
+		}
+		id := hir.GlobalID(len(imports.globals))
+		imports.globals = append(imports.globals, hir.Global{
+			Name:     source.Name,
+			Id:       id,
+			Constant: source.Constant,
+			Type:     globalType,
+		})
+		if err := imports.addSymbol(source.Name, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (imports *moduleImports) addSymbol(name string, symbol hir.Symbol) error {
+	if _, exists := imports.symbols[name]; exists {
+		return fmt.Errorf("duplicate imported symbol `%s`", name)
+	}
+	imports.symbols[name] = symbol
+	return nil
+}
+
+func remapImportedType(t hir.Type, ids map[hir.StructID]hir.StructID) (hir.Type, error) {
+	if t.Base != hir.StructType {
+		return t, nil
+	}
+	id, ok := ids[t.Struct]
+	if !ok {
+		return hir.Type{}, fmt.Errorf("imported type refers to invalid struct id %d", t.Struct)
+	}
+	t.Struct = id
+	return t, nil
 }

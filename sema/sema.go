@@ -14,18 +14,21 @@ type Scope struct {
 }
 
 type Analyzer struct {
-	structs   []hir.Struct
-	functions []hir.Function
-	globals   []hir.Global
+	Structs   []hir.Struct
+	Functions []hir.Function
+	Globals   []hir.Global
 
-	structPositions  []*util.Position
-	functionPostions []*util.Position
-	globalPositions  []*util.Position
+	structPositions   []*util.Position
+	functionPositions []*util.Position
+	globalPositions   []*util.Position
 
 	functionBodies     []*parser.BlockStatement
 	globalInitializers []parser.Expression
+	importedStructs    int
+	importedFunctions  int
+	importedGlobals    int
 
-	symbols         map[string]hir.Symbol
+	Symbols         map[string]hir.Symbol
 	currentScope    *Scope
 	currentFunction *hir.Function
 	loopDepth       int
@@ -34,11 +37,20 @@ type Analyzer struct {
 }
 
 func New() *Analyzer {
-	return &Analyzer{symbols: make(map[string]hir.Symbol)}
+	return &Analyzer{Symbols: make(map[string]hir.Symbol)}
 }
 
 func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic) /* todo: diag */ {
-	// pass 1.0 assigns ids to functions/structs/globals
+	a.importedStructs = len(a.Structs)
+	a.importedFunctions = len(a.Functions)
+	a.importedGlobals = len(a.Globals)
+	a.structPositions = make([]*util.Position, len(a.Structs))
+	a.functionPositions = make([]*util.Position, a.importedFunctions)
+	a.functionBodies = make([]*parser.BlockStatement, a.importedFunctions)
+	a.globalPositions = make([]*util.Position, a.importedGlobals)
+	a.globalInitializers = make([]parser.Expression, a.importedGlobals)
+
+	// pass 1.0 assigns ids to Functions/Structs/Globals
 	if !a.assignIDs(program) {
 		goto end
 	}
@@ -48,7 +60,12 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 		goto end
 	}
 
-	// pass 1.2 checks for parameters and global types being sized
+	// pass 1.2 checks that exported declarations do not expose private types
+	if !a.checkPublicTypes() {
+		goto end
+	}
+
+	// pass 1.3 checks for parameters and global types being sized
 	if !a.checkSizedDeclarations() {
 		goto end
 	}
@@ -58,27 +75,81 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 		goto end
 	}
 
-	// pass 2.1 checks if all functions return
+	// pass 2.1 checks if all Functions return
 	if !a.checkReturns() {
 		goto end
 	}
 
 end:
 	return &hir.Program{
-		Structs:   a.structs,
-		Functions: a.functions,
-		Globals:   a.globals,
+		Structs:   a.Structs,
+		Functions: a.Functions,
+		Globals:   a.Globals,
 	}, a.diagnostics
+}
+
+func (a *Analyzer) checkPublicTypes() bool {
+	valid := true
+
+	for i := a.importedStructs; i < len(a.Structs); i++ {
+		decl := &a.Structs[i]
+		if decl.Private {
+			continue
+		}
+		for _, field := range decl.Fields {
+			if private, ok := a.privateStruct(field.Type); ok {
+				a.appendDiagnostic(a.structPositions[i], "public struct `%s` exposes private struct `%s` in field `%s`", decl.Name, private.Name, field.Name)
+				valid = false
+			}
+		}
+	}
+
+	for i := a.importedFunctions; i < len(a.Functions); i++ {
+		decl := &a.Functions[i]
+		if decl.Private {
+			continue
+		}
+		for _, parameter := range decl.Parameters {
+			if private, ok := a.privateStruct(parameter.Type); ok {
+				a.appendDiagnostic(a.functionPositions[i], "public function `%s` exposes private struct `%s` in parameter `%s`", decl.Name, private.Name, parameter.Name)
+				valid = false
+			}
+		}
+		if private, ok := a.privateStruct(decl.ReturnType); ok {
+			a.appendDiagnostic(a.functionPositions[i], "public function `%s` exposes private struct `%s` in its return type", decl.Name, private.Name)
+			valid = false
+		}
+	}
+
+	for i := a.importedGlobals; i < len(a.Globals); i++ {
+		decl := &a.Globals[i]
+		if !decl.Constant {
+			continue
+		}
+		if private, ok := a.privateStruct(decl.Type); ok {
+			a.appendDiagnostic(a.globalPositions[i], "public global `%s` exposes private struct `%s`", decl.Name, private.Name)
+			valid = false
+		}
+	}
+
+	return valid
+}
+
+func (a *Analyzer) privateStruct(t hir.Type) (*hir.Struct, bool) {
+	if t.Base != hir.StructType || !a.Structs[t.Struct].Private {
+		return nil, false
+	}
+	return &a.Structs[t.Struct], true
 }
 
 func (a *Analyzer) checkReturns() bool {
 	valid := true
-	for i, f := range a.functions {
+	for i, f := range a.Functions {
 		if f.External || (f.ReturnType.Base == hir.Void && f.ReturnType.Pointer == 0) {
 			continue
 		}
 		if blockFallsThrough(f.Body) {
-			a.appendDiagnostic(a.functionPostions[i], "function `%s` can reach the end without returning `%s`", f.Name, f.ReturnType)
+			a.appendDiagnostic(a.functionPositions[i], "function `%s` can reach the end without returning `%s`", f.Name, f.ReturnType)
 			valid = false
 		}
 	}
@@ -110,12 +181,12 @@ func statementFallsThrough(stmt hir.Stmt) bool {
 
 func (a *Analyzer) checkBodies() bool {
 	a.currentScope = &Scope{
-		Symbols: a.symbols,
+		Symbols: a.Symbols,
 		Parent:  nil,
 	}
 
-	for i := range a.globals {
-		g := &a.globals[i]
+	for i := a.importedGlobals; i < len(a.Globals); i++ {
+		g := &a.Globals[i]
 		initExpr, ok := a.checkExpr(a.globalInitializers[g.Id])
 		if !ok {
 			return false
@@ -134,8 +205,8 @@ func (a *Analyzer) checkBodies() bool {
 		g.Initializer = initExpr
 	}
 
-	for i := range a.functions {
-		f := &a.functions[i]
+	for i := range a.Functions {
+		f := &a.Functions[i]
 		if body := a.functionBodies[f.Id]; body != nil {
 			parentScope := a.currentScope
 			a.currentScope = &Scope{
@@ -238,7 +309,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		defType, ok := hir.ConvertVarType(stmt.Type, a.symbols)
+		defType, ok := hir.ConvertVarType(stmt.Type, a.Symbols)
 		if !ok {
 			a.appendDiagnostic(stmt.Position(), "invalid type on local declaration for variable `%s`.", stmt.Name)
 			return nil, false
@@ -366,7 +437,7 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 }
 
 func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiteral, bool) {
-	elementType, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	elementType, ok := hir.ConvertVarType(expr.Type, a.Symbols)
 	if !ok {
 		a.appendDiagnostic(expr.Position(), "invalid array element type `%s`", expr.Type)
 		return nil, false
@@ -408,7 +479,7 @@ func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {
 	if !ok {
 		return nil, false
 	}
-	target, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	target, ok := hir.ConvertVarType(expr.Type, a.Symbols)
 	if !ok {
 		a.appendDiagnostic(expr.Position(), "invalid cast target type `%s`", expr.Type)
 		return nil, false
@@ -492,7 +563,7 @@ func castIntegerInfo(t hir.Type) (bits uint8, signed bool) {
 }
 
 func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool) {
-	t, ok := hir.ConvertVarType(expr.Type, a.symbols)
+	t, ok := hir.ConvertVarType(expr.Type, a.Symbols)
 	if !ok {
 		a.appendDiagnostic(expr.Position(), "invalid type for sizeof")
 		return nil, false
@@ -509,7 +580,7 @@ func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool
 }
 
 func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpression) (*hir.StructLiteral, bool) {
-	symbol, ok := a.symbols[expr.Name]
+	symbol, ok := a.Symbols[expr.Name]
 	if !ok {
 		a.appendDiagnostic(expr.Position(), "symbol does not exist")
 		return nil, false
@@ -519,7 +590,7 @@ func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpressio
 		a.appendDiagnostic(expr.Position(), "`%s` is not struct", expr.Name)
 		return nil, false
 	}
-	s := a.structs[structId]
+	s := a.Structs[structId]
 	if s.Opaque || !a.isSized(hir.Type{Base: hir.StructType, Struct: structId}, make(map[hir.StructID]struct{})) {
 		a.appendDiagnostic(expr.Position(), "struct literals for unsized or opaque structs are not allowed")
 		return nil, false
@@ -651,7 +722,7 @@ func (a *Analyzer) resolveField(baseType hir.Type, expr *parser.InfixExpression)
 		a.appendDiagnostic(expr.Position(), "cannot access field on non-struct type `%s`", baseType)
 		return 0, false
 	}
-	s := a.structs[baseType.Struct]
+	s := a.Structs[baseType.Struct]
 	fieldIdent, ok := expr.Right.(*parser.IdentifierExpression)
 	if !ok {
 		a.appendDiagnostic(expr.Right.Position(), "non identifier is not allowed on rhs of struct access")
@@ -675,7 +746,7 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		if !ok {
 			return nil, false
 		}
-		field := a.structs[left.Type().Struct].Fields[idx]
+		field := a.Structs[left.Type().Struct].Fields[idx]
 
 		return &hir.FieldAccess{
 			ExprInfo:   hir.ExprInfo{ResultType: field.Type},
@@ -718,8 +789,8 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		elementType := leftExpr.Type()
 		elementType.Pointer--
 		if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
-			if elementType.Base == hir.StructType && a.structs[elementType.Struct].Opaque {
-				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.structs[elementType.Struct].Name)
+			if elementType.Base == hir.StructType && a.Structs[elementType.Struct].Opaque {
+				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.Structs[elementType.Struct].Name)
 			} else {
 				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type, got `%s`", elementType)
 			}
@@ -852,7 +923,7 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 		}
 		root = field.Base
 	}
-	if gp, ok := root.(*hir.GlobalPlace); ok && a.globals[gp.ID].Constant {
+	if gp, ok := root.(*hir.GlobalPlace); ok && a.Globals[gp.ID].Constant {
 		a.appendDiagnostic(assignExpr.Position(), "modifying constant globals is not permitted.")
 		return nil, false
 	}
@@ -921,7 +992,7 @@ func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
 		if !ok {
 			return nil, false
 		}
-		field := a.structs[base.Type().Struct].Fields[idx]
+		field := a.Structs[base.Type().Struct].Fields[idx]
 		return &hir.FieldPlace{
 			ExprInfo:   hir.ExprInfo{ResultType: field.Type},
 			Base:       base,
@@ -946,7 +1017,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 		return nil, false
 	}
 
-	fncNode := a.functions[int(fnc.(hir.FunctionID))]
+	fncNode := a.Functions[int(fnc.(hir.FunctionID))]
 	if len(callExpr.Params) != len(fncNode.Parameters) {
 		a.appendDiagnostic(callExpr.Position(), "function `%s` expects %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
 		return nil, false
@@ -1012,7 +1083,7 @@ func (a *Analyzer) findIdentifier(identExpr *parser.IdentifierExpression) (hir.E
 		case hir.GlobalID:
 			return &hir.GlobalRef{
 				ExprInfo: hir.ExprInfo{
-					ResultType: a.globals[s].Type,
+					ResultType: a.Globals[s].Type,
 				},
 				ID: s,
 			}, true
@@ -1091,59 +1162,59 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := hir.StructID(len(a.structs))
-		a.structs = append(a.structs, hir.Struct{
+		id := hir.StructID(len(a.Structs))
+		a.Structs = append(a.Structs, hir.Struct{
 			Name:    node.Name,
 			Id:      id,
 			Opaque:  false,
 			Private: false,
 		})
 		a.structPositions = append(a.structPositions, node.Position())
-		a.symbols[node.Name] = id
+		a.Symbols[node.Name] = id
 	case *parser.ExternStructStatement:
 		if a.isSymbolDuplicate(node.Name, node.Position()) {
 			return false
 		}
 
-		id := hir.StructID(len(a.structs))
-		a.structs = append(a.structs, hir.Struct{
+		id := hir.StructID(len(a.Structs))
+		a.Structs = append(a.Structs, hir.Struct{
 			Name:    node.Name,
 			Id:      id,
 			Opaque:  true,
 			Private: node.Private,
 		})
 		a.structPositions = append(a.structPositions, node.Position())
-		a.symbols[node.Name] = id
+		a.Symbols[node.Name] = id
 	case *parser.FunctionStatement:
 		if a.isSymbolDuplicate(node.Name.Value, node.Position()) {
 			return false
 		}
 
-		id := hir.FunctionID(len(a.functions))
-		a.functions = append(a.functions, hir.Function{
+		id := hir.FunctionID(len(a.Functions))
+		a.Functions = append(a.Functions, hir.Function{
 			Name:     node.Name.Value,
 			Id:       id,
 			External: false,
 			Private:  node.Private,
 		})
-		a.functionPostions = append(a.functionPostions, node.Position())
+		a.functionPositions = append(a.functionPositions, node.Position())
 		a.functionBodies = append(a.functionBodies, node.Body)
-		a.symbols[node.Name.Value] = id
+		a.Symbols[node.Name.Value] = id
 	case *parser.ExternFunctionStatement:
 		if a.isSymbolDuplicate(node.Name, node.Position()) {
 			return false
 		}
 
-		id := hir.FunctionID(len(a.functions))
-		a.functions = append(a.functions, hir.Function{
+		id := hir.FunctionID(len(a.Functions))
+		a.Functions = append(a.Functions, hir.Function{
 			Name:     node.Name,
 			Id:       id,
 			External: true,
 			Private:  node.Private,
 		})
-		a.functionPostions = append(a.functionPostions, node.Position())
+		a.functionPositions = append(a.functionPositions, node.Position())
 		a.functionBodies = append(a.functionBodies, nil)
-		a.symbols[node.Name] = id
+		a.Symbols[node.Name] = id
 	case *parser.DefStatement:
 		if !node.Global {
 			a.appendDiagnostic(node.Position(), "top level expressions are not allowed")
@@ -1154,15 +1225,15 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			return false
 		}
 
-		id := hir.GlobalID(len(a.globals))
-		a.globals = append(a.globals, hir.Global{
+		id := hir.GlobalID(len(a.Globals))
+		a.Globals = append(a.Globals, hir.Global{
 			Name:     node.Name.Value,
 			Id:       id,
 			Constant: node.Constant,
 		})
 		a.globalPositions = append(a.globalPositions, node.Position())
 		a.globalInitializers = append(a.globalInitializers, node.Right)
-		a.symbols[node.Name.Value] = id
+		a.Symbols[node.Name.Value] = id
 	case *parser.ImportStatement:
 		// TODO
 		return true
@@ -1186,9 +1257,9 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 
 		return valid
 	case *parser.FunctionStatement:
-		funcSymbol, _ := a.symbols[node.Name.Value]
+		funcSymbol, _ := a.Symbols[node.Name.Value]
 		funcId := funcSymbol.(hir.FunctionID)
-		funcAst := &a.functions[funcId]
+		funcAst := &a.Functions[funcId]
 
 		retType, ok := a.functionRetType(node.Type, node.Position(), node.Name.Value, false)
 		if !ok {
@@ -1198,9 +1269,9 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 		funcAst.ReturnType = retType
 		return a.checkFunctionParams(node.Params, funcAst, node.Name.Value)
 	case *parser.ExternFunctionStatement:
-		funcSymbol, _ := a.symbols[node.Name]
+		funcSymbol, _ := a.Symbols[node.Name]
 		funcId := funcSymbol.(hir.FunctionID)
-		funcAst := &a.functions[funcId]
+		funcAst := &a.Functions[funcId]
 
 		retType, ok := a.functionRetType(node.ReturnType, node.Position(), node.Name, true)
 		if !ok {
@@ -1213,10 +1284,10 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 		if !node.Global {
 			break
 		}
-		globalSymbol, _ := a.symbols[node.Name.Value]
-		globalAst := &a.globals[globalSymbol.(hir.GlobalID)]
+		Globalsymbol, _ := a.Symbols[node.Name.Value]
+		globalAst := &a.Globals[Globalsymbol.(hir.GlobalID)]
 
-		gt, ok := hir.ConvertVarType(node.Type, a.symbols)
+		gt, ok := hir.ConvertVarType(node.Type, a.Symbols)
 		if !ok {
 			a.appendDiagnostic(node.Name.Position(), "invalid type for global `%s`", node.Name.Value)
 			return false
@@ -1227,15 +1298,15 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 			return false
 		}
 
-		if gt.Base == hir.StructType && gt.Pointer == 0 && a.structs[gt.Struct].Opaque {
+		if gt.Base == hir.StructType && gt.Pointer == 0 && a.Structs[gt.Struct].Opaque {
 			a.appendDiagnostic(node.Name.Position(), "opaque struct by value is not allowed on global definitions, global `%s`", node.Name.Value)
 			return false
 		}
 
 		globalAst.Type = gt
 	case *parser.StructStatement:
-		structSymbol, _ := a.symbols[node.Name]
-		structAst := &a.structs[structSymbol.(hir.StructID)]
+		Structsymbol, _ := a.Symbols[node.Name]
+		structAst := &a.Structs[Structsymbol.(hir.StructID)]
 
 		fieldsSucceded := true
 
@@ -1248,7 +1319,7 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 				continue
 			}
 
-			ft, ok := hir.ConvertVarType(field.Type, a.symbols)
+			ft, ok := hir.ConvertVarType(field.Type, a.Symbols)
 			if !ok {
 				a.appendDiagnostic(field.Name.Position(), "invalid field type for field `%s` on struct `%s`", field.Name.Value, node.Name)
 				fieldsSucceded = false
@@ -1275,25 +1346,25 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 }
 
 func (a *Analyzer) checkSizedDeclarations() bool {
-	for i := range a.structs {
-		s := &a.structs[i]
+	for i := range a.Structs {
+		s := &a.Structs[i]
 		s.Unsized = !a.isSized(hir.Type{Base: hir.StructType, Struct: s.Id}, map[hir.StructID]struct{}{})
 	}
 
-	for _, fnc := range a.functions {
+	for _, fnc := range a.Functions {
 		for _, p := range fnc.Parameters {
 			if !a.isSized(p.Type, map[hir.StructID]struct{}{}) {
-				a.appendDiagnostic(a.functionPostions[fnc.Id], "unsized type is not allowed for parameter `%s` in function `%s`; use a pointer", p.Name, fnc.Name)
+				a.appendDiagnostic(a.functionPositions[fnc.Id], "unsized type is not allowed for parameter `%s` in function `%s`; use a pointer", p.Name, fnc.Name)
 				return false
 			}
 		}
 		if !fnc.External && fnc.ReturnType.Base != hir.Void && !a.isSized(fnc.ReturnType, map[hir.StructID]struct{}{}) {
-			a.appendDiagnostic(a.functionPostions[fnc.Id], "unsized return type is not allowed for function `%s`; use a pointer", fnc.Name)
+			a.appendDiagnostic(a.functionPositions[fnc.Id], "unsized return type is not allowed for function `%s`; use a pointer", fnc.Name)
 			return false
 		}
 	}
 
-	for _, g := range a.globals {
+	for _, g := range a.Globals {
 		if !a.isSized(g.Type, map[hir.StructID]struct{}{}) {
 			a.appendDiagnostic(a.globalPositions[g.Id], "unsized type is not allowed for global `%s`; use a pointer", g.Name)
 			return false
@@ -1314,7 +1385,7 @@ func (a *Analyzer) checkFunctionParams(params []parser.FunctionParameter, funcAs
 			continue
 		}
 
-		pt, ok := hir.ConvertVarType(param.Type, a.symbols)
+		pt, ok := hir.ConvertVarType(param.Type, a.Symbols)
 		if !ok {
 			a.appendDiagnostic(param.Name.Position(), "invalid parameter type for parameter `%s` on function `%s`", param.Name.Value, funcName)
 			paramsSucceded = false
@@ -1326,7 +1397,7 @@ func (a *Analyzer) checkFunctionParams(params []parser.FunctionParameter, funcAs
 			continue
 		}
 		if pt.Base == hir.StructType && pt.Pointer == 0 {
-			stct := a.structs[pt.Struct]
+			stct := a.Structs[pt.Struct]
 			if stct.Opaque {
 				a.appendDiagnostic(param.Name.Position(), "opaque struct value types are not allowed on parameters, param `%s` on function `%s`", param.Name.Value, funcName)
 				paramsSucceded = false
@@ -1345,13 +1416,13 @@ func (a *Analyzer) checkFunctionParams(params []parser.FunctionParameter, funcAs
 }
 
 func (a *Analyzer) functionRetType(retType lexer.VarType, position *util.Position, funcName string, extern bool) (hir.Type, bool) {
-	rt, ok := hir.ConvertVarType(retType, a.symbols)
+	rt, ok := hir.ConvertVarType(retType, a.Symbols)
 	if !ok {
 		a.appendDiagnostic(position, "invalid return type for function `%s`", funcName)
 		return hir.Type{}, false
 	}
 
-	if !extern && rt.Base == hir.StructType && rt.Pointer == 0 && a.structs[rt.Struct].Opaque {
+	if !extern && rt.Base == hir.StructType && rt.Pointer == 0 && a.Structs[rt.Struct].Opaque {
 		a.appendDiagnostic(position, "opaque struct value return type is not allowed for function `%s`", funcName)
 		return hir.Type{}, false
 	}
@@ -1370,7 +1441,7 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 	}
 
 	if t.Base == hir.StructType {
-		if a.structs[t.Struct].Opaque {
+		if a.Structs[t.Struct].Opaque {
 			return false
 		} else {
 			if _, ok := visitedStructs[t.Struct]; ok {
@@ -1379,7 +1450,7 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 			visitedStructs[t.Struct] = struct{}{}
 			defer delete(visitedStructs, t.Struct)
 
-			for _, f := range a.structs[t.Struct].Fields {
+			for _, f := range a.Structs[t.Struct].Fields {
 				if !a.isSized(f.Type, visitedStructs) {
 					return false
 				}
@@ -1411,7 +1482,7 @@ func isConstantInitializer(expr hir.Expr) bool {
 	}
 }
 func (a *Analyzer) isSymbolDuplicate(name string, pos *util.Position) bool {
-	if _, exists := a.symbols[name]; exists {
+	if _, exists := a.Symbols[name]; exists {
 		a.appendDiagnostic(pos, "duplicate symbol `%s`", name)
 		return true
 	}
