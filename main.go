@@ -31,7 +31,7 @@ func main() {
 			return err
 		},
 	}
-	buildCmd.Flags().BoolVar(&buildOpts.Dbg, "dbg", false, "Prints out the AST for all compiled files, along with the `clang` command used for compilation")
+	buildCmd.Flags().BoolVar(&buildOpts.Dbg, "dbg", false, "Print LLVM IR for each module and the linker command")
 	buildCmd.Flags().BoolVar(&buildOpts.Shared, "shared", false, "Compiles the code as a shared library")
 	buildCmd.Flags().StringVarP(&buildOpts.Output, "output", "o", "./out", "Changes the name of the output executable")
 	buildCmd.Flags().StringVar(&buildOpts.Emitter, "emitter", "llvm", "Code emitter (available: llvm)")

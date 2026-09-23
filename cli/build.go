@@ -72,8 +72,12 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", module.path, err)
 		}
-		if err := module.emitter.Emit(); err != nil {
-			return fmt.Errorf("%s: %w", module.path, err)
+		emitErr := module.emitter.Emit()
+		if opts.Dbg {
+			fmt.Fprintf(os.Stderr, "LLVM IR for %s:\n%s\n", module.path, module.emitter.Module().String())
+		}
+		if emitErr != nil {
+			return fmt.Errorf("%s: %w", module.path, emitErr)
 		}
 		objectPath := filepath.Join(objectDir, fmt.Sprintf("module-%d.o", i))
 		if err := module.emitter.WriteObject(objectPath); err != nil {

@@ -6,6 +6,7 @@ import (
 	"gl3/hir"
 	"sync"
 
+	"tinygo.org/x/go-llvm"
 	llvmapi "tinygo.org/x/go-llvm"
 )
 
@@ -105,23 +106,68 @@ func (e *Emitter) Module() llvmapi.Module {
 }
 
 func (e *Emitter) Emit() error {
-	return ErrNotImplemented
+	for _, s := range e.program.Structs {
+		e.declareStruct(&s)
+		if !s.Opaque {
+			e.defineStruct(&s)
+		}
+	}
+
+	for _, f := range e.program.Functions {
+		e.declareFunction(&f)
+	}
+
+	for _, g := range e.program.Globals {
+		e.declareGlobal(&g)
+	}
+
+	return nil
 }
 
 func (e *Emitter) declareStruct(s *hir.Struct) error {
-	panic("emitter: declareStructs not implemented")
+	e.structs[s.Id] = e.context.StructCreateNamed(s.Name)
+	return nil
 }
 
 func (e *Emitter) defineStruct(s *hir.Struct) error {
-	panic("emitter: defineStructs not implemented")
+	fieldTypes := []llvm.Type{}
+	for _, f := range s.Fields {
+		lowered, err := e.lowerType(f.Type)
+		if err != nil {
+			return err
+		}
+		fieldTypes = append(fieldTypes, lowered)
+	}
+	e.structs[s.Id].StructSetBody(fieldTypes, false)
+	return nil
 }
 
 func (e *Emitter) declareFunction(function *hir.Function) error {
-	panic("emitter: declareFunctions not implemented")
+	paramTypes := []llvmapi.Type{}
+	for _, p := range function.Parameters {
+		lowered, err := e.lowerType(p.Type)
+		if err != nil {
+			return err
+		}
+		paramTypes = append(paramTypes, lowered)
+	}
+
+	loweredRet, err := e.lowerType(function.ReturnType)
+	if err != nil {
+		return err
+	}
+
+	e.functions[function.Id] = llvmapi.AddFunction(e.module, function.Name, llvmapi.FunctionType(loweredRet, paramTypes, false))
+	return nil
 }
 
 func (e *Emitter) declareGlobal(global *hir.Global) error {
-	panic("emitter: declareGlobals not implemented")
+	lowered, err := e.lowerType(global.Type)
+	if err != nil {
+		return err
+	}
+	e.globals[global.Id] = llvmapi.AddGlobal(e.module, lowered, global.Name)
+	return nil
 }
 
 func (e *Emitter) emitFunction(function *hir.Function) error {
@@ -145,5 +191,39 @@ func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
 }
 
 func (e *Emitter) lowerType(t hir.Type) (llvmapi.Type, error) {
-	panic("emitter: lowerType not implemented")
+	var lowered llvmapi.Type
+	switch t.Base {
+	case hir.Int, hir.Uint:
+		lowered = e.context.Int64Type()
+	case hir.Int32, hir.Uint32:
+		lowered = e.context.Int32Type()
+	case hir.Int16, hir.Uint16:
+		lowered = e.context.Int16Type()
+	case hir.Int8, hir.Char, hir.Uint8:
+		lowered = e.context.Int8Type()
+	case hir.Bool:
+		lowered = e.context.Int1Type()
+	case hir.Float:
+		lowered = e.context.FloatType()
+	case hir.Void:
+		lowered = e.context.VoidType()
+	case hir.StructType:
+		if int(t.Struct) >= len(e.structs) {
+			return llvmapi.Type{}, fmt.Errorf("unknown struct ID %d", t.Struct)
+		}
+		lowered = e.structs[t.Struct]
+		if lowered.IsNil() {
+			return llvmapi.Type{}, fmt.Errorf("struct %q has not been declared", e.program.Structs[t.Struct].Name)
+		}
+	default:
+		return llvmapi.Type{}, fmt.Errorf("unsupported HIR type %s", t)
+	}
+
+	if t.Pointer != 0 {
+		if t.Base == hir.Void {
+			lowered = e.context.Int8Type()
+		}
+		return llvmapi.PointerType(lowered, 0), nil
+	}
+	return lowered, nil
 }

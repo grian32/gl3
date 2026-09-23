@@ -1,5 +1,5 @@
 all: stdlib
-	go build -o gl3 .
+	go build -tags=llvm22 -o gl3 .
 
 clean:
 	rm -f builtins/*.ll
