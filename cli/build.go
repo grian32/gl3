@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"gl3/emitter"
 	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
@@ -16,7 +17,6 @@ import (
 
 type BuildOpts struct {
 	Dbg         bool
-	NoExecBuild bool
 	Shared      bool
 	Output      string
 	O1          bool
@@ -27,6 +27,9 @@ type BuildOpts struct {
 func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 	if opts.O1 && opts.O2 || opts.O1 && opts.O3 || opts.O2 && opts.O3 {
 		return errors.New("multiple optimization level arguments not allowed, please use either --O1, --O2, --O3")
+	}
+	if len(files) == 0 {
+		return errors.New("no input files")
 	}
 
 	ctx := &buildContext{
@@ -39,13 +42,49 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 			return err
 		}
 	}
+	optimization := 0
+	switch {
+	case opts.O3:
+		optimization = 3
+	case opts.O2:
+		optimization = 2
+	case opts.O1:
+		optimization = 1
+	}
+	output := opts.Output
+	if output == "" {
+		output = "./out"
+	}
 
-	return nil
+	objectDir, err := os.MkdirTemp("", "gl3-objects-")
+	if err != nil {
+		return fmt.Errorf("create object directory: %w", err)
+	}
+	defer os.RemoveAll(objectDir)
+	defer ctx.closeEmitters()
+	var objects []string
+	for i, module := range ctx.order {
+		module.emitter, err = emitter.New(module.Program, module.path, optimization)
+		if err != nil {
+			return fmt.Errorf("%s: %w", module.path, err)
+		}
+		if err := module.emitter.Emit(); err != nil {
+			return fmt.Errorf("%s: %w", module.path, err)
+		}
+		objectPath := filepath.Join(objectDir, fmt.Sprintf("module-%d.o", i))
+		if err := module.emitter.WriteObject(objectPath); err != nil {
+			return fmt.Errorf("%s: %w", module.path, err)
+		}
+		objects = append(objects, objectPath)
+	}
+	return linkObjects(objects, output, opts.Shared, opts.Dbg)
 }
 
 type compiledModule struct {
 	Program   *hir.Program
 	Interface moduleInterface
+	path      string
+	emitter   *emitter.Emitter
 }
 
 type moduleInterface struct {
@@ -84,6 +123,15 @@ func newModuleImports() *moduleImports {
 type buildContext struct {
 	compiled  map[string]*compiledModule
 	compiling map[string]bool
+	order     []*compiledModule
+}
+
+func (ctx *buildContext) closeEmitters() {
+	for _, module := range ctx.order {
+		if module.emitter != nil {
+			module.emitter.Close()
+		}
+	}
 }
 
 func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error) {
@@ -151,9 +199,7 @@ func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error
 		}
 		return nil, fmt.Errorf("%s: found compiler errors", absPath)
 	}
-	// TODO: emitter
-
-	module := &compiledModule{Program: analyzed}
+	module := &compiledModule{Program: analyzed, path: absPath}
 	for i, decl := range analyzed.Structs {
 		if !decl.Private {
 			origin := structOrigin{path: absPath, id: decl.Id}
@@ -183,6 +229,7 @@ func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error
 	}
 
 	ctx.compiled[absPath] = module
+	ctx.order = append(ctx.order, module)
 	return module, nil
 }
 

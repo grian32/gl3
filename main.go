@@ -32,7 +32,6 @@ func main() {
 		},
 	}
 	buildCmd.Flags().BoolVar(&buildOpts.Dbg, "dbg", false, "Prints out the AST for all compiled files, along with the `clang` command used for compilation")
-	buildCmd.Flags().BoolVar(&buildOpts.NoExecBuild, "noexecbuild", false, "Does not execute the `clang` build command")
 	buildCmd.Flags().BoolVar(&buildOpts.Shared, "shared", false, "Compiles the code as a shared library")
 	buildCmd.Flags().StringVarP(&buildOpts.Output, "output", "o", "./out", "Changes the name of the output executable")
 	buildCmd.Flags().BoolVar(&buildOpts.O1, "O1", false, "Compiles the code with optimization level 1")
