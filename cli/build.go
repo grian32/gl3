@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gl3/emitter"
+	llvmemitter "gl3/emitter/llvm"
 	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
@@ -16,15 +16,19 @@ import (
 )
 
 type BuildOpts struct {
-	Dbg         bool
-	Shared      bool
-	Output      string
-	O1          bool
-	O2          bool
-	O3          bool
+	Dbg     bool
+	Shared  bool
+	Output  string
+	Emitter string
+	O1      bool
+	O2      bool
+	O3      bool
 }
 
 func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
+	if opts.Emitter != "" && opts.Emitter != "llvm" {
+		return fmt.Errorf("unsupported emitter %q (available: llvm)", opts.Emitter)
+	}
 	if opts.O1 && opts.O2 || opts.O1 && opts.O3 || opts.O2 && opts.O3 {
 		return errors.New("multiple optimization level arguments not allowed, please use either --O1, --O2, --O3")
 	}
@@ -64,7 +68,7 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 	defer ctx.closeEmitters()
 	var objects []string
 	for i, module := range ctx.order {
-		module.emitter, err = emitter.New(module.Program, module.path, optimization)
+		module.emitter, err = llvmemitter.New(module.Program, module.path, optimization)
 		if err != nil {
 			return fmt.Errorf("%s: %w", module.path, err)
 		}
@@ -84,7 +88,7 @@ type compiledModule struct {
 	Program   *hir.Program
 	Interface moduleInterface
 	path      string
-	emitter   *emitter.Emitter
+	emitter   *llvmemitter.Emitter
 }
 
 type moduleInterface struct {

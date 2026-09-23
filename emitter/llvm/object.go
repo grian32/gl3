@@ -1,27 +1,27 @@
-package emitter
+package llvm
 
 import (
 	"fmt"
 	"os"
 
-	llvm "tinygo.org/x/go-llvm"
+	llvmapi "tinygo.org/x/go-llvm"
 )
 
 func (e *Emitter) WriteObject(path string) error {
-	if err := llvm.VerifyModule(e.module, llvm.ReturnStatusAction); err != nil {
+	if err := llvmapi.VerifyModule(e.module, llvmapi.ReturnStatusAction); err != nil {
 		return fmt.Errorf("invalid LLVM module: %w", err)
 	}
 
 	if e.optimization > 0 {
 		passes := fmt.Sprintf("default<O%d>", e.optimization)
-		options := llvm.NewPassBuilderOptions()
+		options := llvmapi.NewPassBuilderOptions()
 		defer options.Dispose()
 		if err := e.module.RunPasses(passes, e.target, options); err != nil {
 			return fmt.Errorf("optimize LLVM module: %w", err)
 		}
 	}
 
-	object, err := e.target.EmitToMemoryBuffer(e.module, llvm.ObjectFile)
+	object, err := e.target.EmitToMemoryBuffer(e.module, llvmapi.ObjectFile)
 	if err != nil {
 		return fmt.Errorf("generate object: %w", err)
 	}
