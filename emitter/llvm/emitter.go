@@ -237,7 +237,7 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 	case *hir.LocalDeclaration:
 		value, err := e.emitExpr(stmt.Initializer)
 		if err != nil {
-			return false, nil
+			return false, err
 		}
 		e.builder.CreateStore(value, e.locals[stmt.ID])
 		return true, nil
@@ -313,6 +313,15 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 	case *hir.Cast:
 	case *hir.Unary:
 	case *hir.Assignment:
+		p, err := e.emitPlace(expr.Target)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		ex, err := e.emitExpr(expr.Value)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateStore(ex, p), nil
 	case *hir.AddressOf:
 	case *hir.Dereference:
 	case *hir.FieldAccess:
