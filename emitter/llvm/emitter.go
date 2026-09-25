@@ -195,9 +195,12 @@ func (e *Emitter) emitFunction(function *hir.Function) error {
 	f := e.functions[function.Id]
 	block := llvmapi.AddBasicBlock(f, "body")
 	e.builder.SetInsertPointAtEnd(block)
-	_, err := e.emitBlock(&function.Body)
+	fallsThrough, err := e.emitBlock(&function.Body)
 	if err != nil {
 		return err
+	}
+	if fallsThrough && function.ReturnType.Base == hir.Void && function.ReturnType.Pointer == 0 {
+		e.builder.CreateRetVoid()
 	}
 
 	return nil
@@ -229,9 +232,11 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		e.builder.CreateRet(value)
 		return false, nil
 	case *hir.ExpressionStatement:
-		// TODO: figure this out LO
 		_, err := e.emitExpr(stmt.Expr)
-		return true, err
+		if err != nil {
+			return false, err
+		}
+		return true, nil
 	case *hir.If:
 	case *hir.While:
 	case *hir.Break:
