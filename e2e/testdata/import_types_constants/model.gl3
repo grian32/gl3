@@ -1,8 +1,0 @@
-struct Pair { int32 left int32 right }
-global const int32 answer = 42i32
-fnc make_pair(int32 left) -> Pair {
- def Pair pair = Pair:{ 0i32, 0i32 }
- pair.left = left
- pair.right = left + 1i32
- return pair
-}

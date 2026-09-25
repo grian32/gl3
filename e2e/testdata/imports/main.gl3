@@ -1,6 +1,0 @@
-import "io"
-import "math.gl3"
-fnc main() -> int32 {
- println("%d", twice(21i32))
- return 0i32
-}

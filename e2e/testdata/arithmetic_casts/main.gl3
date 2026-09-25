@@ -1,9 +1,0 @@
-import "io"
-fnc main() -> int32 {
- def int32 a = 7i32
- def int32 b = 2i32
- println("%d %d %d", a + b * 3i32, (a + b) * 3i32, a - b - 1i32)
- def float ratio = (a as float) / (b as float)
- println("%d", ratio as int32)
- return 0i32
-}

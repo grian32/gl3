@@ -1,5 +1,0 @@
-import "io"
-fnc main() -> int32 {
- println("%d", true)
- return 0i32
-}

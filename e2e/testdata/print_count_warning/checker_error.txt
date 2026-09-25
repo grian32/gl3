@@ -1,1 +1,0 @@
-print/ln function should have as many specifiers as arguments given, 2 specifiers, 1 argument

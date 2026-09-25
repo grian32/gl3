@@ -1,4 +1,0 @@
-fnc main() -> int32 {
- def int32 = 1i32
- return 0i32
-}

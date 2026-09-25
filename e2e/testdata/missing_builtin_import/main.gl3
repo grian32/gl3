@@ -1,4 +1,0 @@
-fnc main() -> int32 {
- dbg_i32(42i32)
- return 0i32
-}

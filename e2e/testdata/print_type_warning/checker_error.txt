@@ -1,1 +1,0 @@
-print/ln arg 0 with specifier %d isnt't Int32

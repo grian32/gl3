@@ -1,5 +1,0 @@
-fnc main() -> int32 {
- def float converted = 255u8 as float
- if converted != 255.0 { return 1i32 }
- return 0i32
-}

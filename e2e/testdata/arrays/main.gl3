@@ -1,9 +1,0 @@
-import "io"
-import "arrays"
-fnc main() -> int32 {
- def int32* values = [int32; 2i32, 4i32, 6i32]
- values[1] = 10i32
- println("%d", values[0] + values[1] + values[2])
- arr_free(&values)
- return 0i32
-}

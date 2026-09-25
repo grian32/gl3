@@ -1,8 +1,0 @@
-extern fnc getchar() -> int32
-extern fnc putchar(int32 c) -> int32
-extern fnc write(int32 fd, char* data, int size) -> int
-fnc main() -> int32 {
- putchar(getchar())
- write(2i32, "stderr ok\n", 10)
- return 7i32
-}

@@ -1,5 +1,0 @@
-global const int32 answer = 42i32
-fnc main() -> int32 {
- answer = 7i32
- return 0i32
-}

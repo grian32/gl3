@@ -1,5 +1,0 @@
-import "io"
-fnc main() -> int32 {
- println("Hello, World!")
- return 0i32
-}

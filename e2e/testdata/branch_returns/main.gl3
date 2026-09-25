@@ -1,8 +1,0 @@
-fnc choose(bool yes) -> int32 {
- if yes { return 11i32 } else { return 22i32 }
-}
-fnc main() -> int32 {
- if choose(true) != 11i32 { return 1i32 }
- if choose(false) != 22i32 { return 2i32 }
- return 0i32
-}

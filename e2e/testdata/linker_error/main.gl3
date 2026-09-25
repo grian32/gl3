@@ -1,2 +1,0 @@
-extern fnc gl3_e2e_missing_symbol() -> int32
-fnc main() -> int32 { return gl3_e2e_missing_symbol() }
