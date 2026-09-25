@@ -115,6 +115,9 @@ func (e *Emitter) Emit() error {
 
 	for _, f := range e.program.Functions {
 		e.declareFunction(&f)
+		if !f.External {
+			e.emitFunction(&f)
+		}
 	}
 
 	for _, g := range e.program.Globals {
@@ -171,22 +174,95 @@ func (e *Emitter) declareGlobal(global *hir.Global) error {
 }
 
 func (e *Emitter) emitFunction(function *hir.Function) error {
-	panic("emitter: emitFunction not implemented")
+	f := e.functions[function.Id]
+	block := llvmapi.AddBasicBlock(f, "body")
+	e.builder.SetInsertPointAtEnd(block)
+	_, err := e.emitBlock(&function.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (e *Emitter) emitBlock(block *hir.Block) error {
-	panic("emitter: emitBlock not implemented")
+func (e *Emitter) emitBlock(block *hir.Block) (bool, error) {
+	for _, stmt := range block.Statements {
+		fallsThrough, err := e.emitStmt(stmt)
+		if err != nil || !fallsThrough {
+			return fallsThrough, err
+		}
+	}
+
+	return true, nil
 }
 
-func (e *Emitter) emitStmt(stmt hir.Stmt) error {
+func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
+	switch stmt := stmt.(type) {
+	case *hir.LocalDeclaration:
+	case *hir.Return:
+		value, err := e.emitExpr(stmt.Value)
+		if err != nil {
+			return false, err
+		}
+		e.builder.CreateRet(value)
+		return false, nil
+	case *hir.ExpressionStatement:
+	case *hir.If:
+	case *hir.While:
+	case *hir.Break:
+	case *hir.Continue:
+	}
 	panic("emitter: emitStmt not implemented")
 }
 
 func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
+	switch expr := expr.(type) {
+	case *hir.LocalRef:
+	case *hir.GlobalRef:
+	case *hir.IntegerLiteral:
+		typ, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return llvmapi.ConstInt(typ, expr.Value, false), nil
+	case *hir.BooleanLiteral:
+		var value uint64 = 0
+		if expr.Value {
+			value = 1
+		}
+		return llvmapi.ConstInt(e.context.Int1Type(), value, false), nil
+	case *hir.FloatLiteral:
+		return llvmapi.ConstFloat(e.context.FloatType(), float64(expr.Value)), nil
+	case *hir.StringLiteral:
+		data := e.context.ConstString(expr.Value, false)
+		global := llvmapi.AddGlobal(e.module, data.Type(), ".str")
+		global.SetInitializer(data)
+		global.SetGlobalConstant(true)
+
+		zero := llvmapi.ConstInt(e.context.Int32Type(), 0, false)
+		return llvmapi.ConstInBoundsGEP(data.Type(), global, []llvmapi.Value{zero, zero}), nil
+	case *hir.Binary:
+	case *hir.Call:
+	case *hir.Cast:
+	case *hir.Unary:
+	case *hir.Assignment:
+	case *hir.AddressOf:
+	case *hir.Dereference:
+	case *hir.FieldAccess:
+	case *hir.StructLiteral:
+	case *hir.ArrayLiteral:
+	case *hir.Sizeof:
+	}
 	panic("emitter: emitExpr not implemented")
 }
 
 func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
+	switch place.(type) {
+	case *hir.LocalPlace:
+	case *hir.GlobalPlace:
+	case *hir.DerefPlace:
+	case *hir.FieldPlace:
+	}
 	panic("emitter: emitPlace not implemented")
 }
 
