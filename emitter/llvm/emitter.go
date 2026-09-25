@@ -263,6 +263,7 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		global := llvmapi.AddGlobal(e.module, data.Type(), ".str")
 		global.SetInitializer(data)
 		global.SetGlobalConstant(true)
+		global.SetUnnamedAddr(true)
 
 		zero := llvmapi.ConstInt(e.context.Int32Type(), 0, false)
 		return llvmapi.ConstInBoundsGEP(data.Type(), global, []llvmapi.Value{zero, zero}), nil
@@ -273,7 +274,7 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		for _, p := range expr.Args {
 			pe, err := e.emitExpr(p)
 			if err != nil {
-				return llvmapi.Value{}, nil
+				return llvmapi.Value{}, err
 			}
 			params = append(params, pe)
 		}
