@@ -1,0 +1,10 @@
+// e2e: {"mode":"run"}
+fnc main() -> int32 {
+    if !(2 + 3 * 4 == 14) { return 1i32 }
+    if !((2 + 3) * 4 == 20) { return 2i32 }
+    if !(20 / 2 / 2 == 5) { return 3i32 }
+    if !(10 - 3 - 2 == 5) { return 4i32 }
+    if !(true || false && false) { return 5i32 }
+    if !(!(false || true) == false) { return 6i32 }
+    return 0i32
+}

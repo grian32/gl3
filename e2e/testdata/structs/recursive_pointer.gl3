@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":42}
+struct Node { int32 value Node* next }
+fnc main() -> int32 {
+    def Node tail = Node:{42i32, 0 as Node*}
+    def Node head = Node:{7i32, &tail}
+    return (*head.next).value
+}

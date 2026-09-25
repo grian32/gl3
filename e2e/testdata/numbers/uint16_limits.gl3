@@ -1,0 +1,8 @@
+// e2e: {"mode":"run"}
+fnc identity(uint16 x) -> uint16 { return x }
+fnc main() -> int32 {
+    if !(identity(0u16) == 0u16) { return 1i32 }
+    if !(identity(65535u16) == 65535u16) { return 2i32 }
+    if !(identity(0x2Au16) == 42u16) { return 3i32 }
+    return 0i32
+}

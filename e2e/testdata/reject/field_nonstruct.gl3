@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["field","non-struct"],"line":3}
+fnc main() -> int32 {
+    def int32 value = 1i32 return value.missing
+    return 0i32
+}

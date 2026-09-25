@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["empty","character"],"line":3}
+fnc main() -> int32 {
+    def int8 character = ''
+    return 0i32
+}

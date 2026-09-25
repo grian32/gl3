@@ -1,0 +1,2 @@
+// e2e: {"mode":"reject","error":["unsupported emitter","missing"],"line":0,"flags":["--emitter=missing"]}
+fnc main() -> int32 { return 0i32 }

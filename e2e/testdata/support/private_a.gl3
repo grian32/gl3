@@ -1,0 +1,2 @@
+private fnc helper() -> int32 { return 11i32 }
+fnc a() -> int32 { return helper() }

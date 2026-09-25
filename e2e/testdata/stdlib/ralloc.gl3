@@ -1,0 +1,14 @@
+// e2e: {"mode":"run","exit":42}
+import "ralloc"
+fnc main() -> int32 {
+    def int32* values = calloc(4u64, sizeof int32) as int32*
+    if values[0] != 0i32 { return 1i32 }
+    if values[3] != 0i32 { return 2i32 }
+    values[2] = 42i32
+    def int32* other = malloc(sizeof int32) as int32*
+    *other = values[2]
+    def int32 result = *other
+    free(other as none*)
+    free(values as none*)
+    return result
+}

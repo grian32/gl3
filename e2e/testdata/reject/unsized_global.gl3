@@ -1,0 +1,4 @@
+// e2e: {"mode":"reject","error":["unsized","global","value","pointer"],"line":3}
+struct Node { Node next }
+global Node value = 0i32
+fnc main() -> int32 { return 0i32 }

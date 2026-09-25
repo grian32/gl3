@@ -1,0 +1,2 @@
+// e2e: {"mode":"reject","error":["no input files"],"line":0,"no_input":true}
+// Intentionally invoked without input files.

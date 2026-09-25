@@ -1,0 +1,8 @@
+// e2e: {"mode":"run","exit":42}
+import "../support/padding.gl3"
+import "../support/aggregate_constants.gl3"
+fnc main() -> int32 {
+    if !config.enabled { return 1i32 }
+    if config.origin.x != 17i32 { return 2i32 }
+    return config.origin.y
+}

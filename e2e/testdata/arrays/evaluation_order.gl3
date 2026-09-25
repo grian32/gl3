@@ -1,0 +1,11 @@
+// e2e: {"mode":"run"}
+global int32 counter = 0i32
+fnc next() -> int32 { counter = counter + 1i32 return counter }
+fnc main() -> int32 {
+    def int32* values = [int32; next(), next(), next()]
+    if values[0] != 1i32 { return 1i32 }
+    if values[1] != 2i32 { return 2i32 }
+    if values[2] != 3i32 { return 3i32 }
+    if counter != 3i32 { return 4i32 }
+    return 0i32
+}

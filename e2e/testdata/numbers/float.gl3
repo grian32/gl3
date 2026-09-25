@@ -1,0 +1,25 @@
+// e2e: {"mode":"run"}
+fnc add(float a, float b) -> float { return a + b }
+fnc sub(float a, float b) -> float { return a - b }
+fnc mul(float a, float b) -> float { return a * b }
+fnc div(float a, float b) -> float { return a / b }
+fnc neg(float a) -> float { return -a }
+fnc main() -> int32 {
+    if !(add(1.5, 2.25) == 3.75) { return 1i32 }
+    if !(sub(2.25, 1.5) == 0.75) { return 2i32 }
+    if !(mul(1.5, 2.0) == 3.0) { return 3i32 }
+    if !(div(3.0, 2.0) == 1.5) { return 4i32 }
+    if !(neg(1.5) == -1.5) { return 5i32 }
+    if !(1.5 != 2.0) { return 6i32 }
+    if !(1.5 < 2.0) { return 7i32 }
+    if !(2.0 > 1.5) { return 8i32 }
+    if !(1.5 <= 1.5) { return 9i32 }
+    if !(1.5 >= 1.5) { return 10i32 }
+    if !(!(2.0 < 1.5)) { return 11i32 }
+    if !(!(1.5 > 2.0)) { return 12i32 }
+    if !(!(2.0 <= 1.5)) { return 13i32 }
+    if !(!(1.5 >= 2.0)) { return 14i32 }
+    if !(!(1.5 != 1.5)) { return 15i32 }
+    if !(!(1.5 == 2.0)) { return 16i32 }
+    return 0i32
+}

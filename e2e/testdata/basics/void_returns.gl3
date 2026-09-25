@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","stdout":"implicit\nexplicit\n"}
+extern fnc puts(char* text) -> int32
+fnc implicit() -> none { puts("implicit") }
+fnc explicit() -> none { puts("explicit") return }
+fnc early() -> none { return; puts("unreachable") }
+fnc main() -> int32 { implicit() explicit() early() return 0i32 }

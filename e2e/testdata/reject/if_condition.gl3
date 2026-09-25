@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["condition","bool"],"line":3}
+fnc main() -> int32 {
+    if 1i32 { return 1i32 }
+    return 0i32
+}

@@ -1,0 +1,3 @@
+import "base.gl3"
+struct Left { Pair value }
+fnc left() -> Pair { return make() }

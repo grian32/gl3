@@ -1,0 +1,8 @@
+// e2e: {"mode":"run"}
+fnc identity(uint8 x) -> uint8 { return x }
+fnc main() -> int32 {
+    if !(identity(0u8) == 0u8) { return 1i32 }
+    if !(identity(255u8) == 255u8) { return 2i32 }
+    if !(identity(0x2Au8) == 42u8) { return 3i32 }
+    return 0i32
+}

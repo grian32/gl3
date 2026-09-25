@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["return","bool","int32"],"line":3}
+fnc main() -> int32 {
+    return true
+    return 0i32
+}

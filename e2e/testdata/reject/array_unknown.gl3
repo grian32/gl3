@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["array element","Missing"],"line":3}
+fnc main() -> int32 {
+    [Missing;]
+    return 0i32
+}

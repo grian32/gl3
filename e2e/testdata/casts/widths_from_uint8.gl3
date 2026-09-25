@@ -1,0 +1,20 @@
+// e2e: {"mode":"run"}
+fnc to_int8(uint8 value) -> int8 { return value as int8 }
+fnc to_int16(uint8 value) -> int16 { return value as int16 }
+fnc to_int32(uint8 value) -> int32 { return value as int32 }
+fnc to_int(uint8 value) -> int { return value as int }
+fnc to_uint8(uint8 value) -> uint8 { return value as uint8 }
+fnc to_uint16(uint8 value) -> uint16 { return value as uint16 }
+fnc to_uint32(uint8 value) -> uint32 { return value as uint32 }
+fnc to_uint(uint8 value) -> uint { return value as uint }
+fnc main() -> int32 {
+    if !(to_int8(255u8) == -1i8) { return 1i32 }
+    if !(to_int16(255u8) == 255i16) { return 2i32 }
+    if !(to_int32(255u8) == 255i32) { return 3i32 }
+    if !(to_int(255u8) == 255) { return 4i32 }
+    if !(to_uint8(255u8) == 255u8) { return 5i32 }
+    if !(to_uint16(255u8) == 255u16) { return 6i32 }
+    if !(to_uint32(255u8) == 255u32) { return 7i32 }
+    if !(to_uint(255u8) == 255u64) { return 8i32 }
+    return 0i32
+}

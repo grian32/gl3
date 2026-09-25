@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["cannot cast","int","bool"],"line":3}
+fnc main() -> int32 {
+    def bool value = 1 as bool
+    return 0i32
+}

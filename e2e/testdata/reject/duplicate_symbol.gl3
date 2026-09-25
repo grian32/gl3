@@ -1,0 +1,4 @@
+// e2e: {"mode":"reject","error":["duplicate symbol","helper"],"line":0}
+fnc helper() -> none {}
+fnc helper() -> none {}
+fnc main() -> int32 { return 0i32 }

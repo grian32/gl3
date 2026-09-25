@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["integer","18446744073709551616"],"line":3}
+fnc main() -> int32 {
+    def uint value = 18446744073709551616u64
+    return 0i32
+}

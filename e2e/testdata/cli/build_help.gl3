@@ -1,0 +1,2 @@
+// e2e: {"mode":"help","no_input":true,"flags":["--help"],"build_output":["build","--output","--shared","--emitter","--O1","--O2","--O3"]}
+// Help must succeed without attempting to compile an input.

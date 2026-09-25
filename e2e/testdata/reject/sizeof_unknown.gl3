@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["invalid type","sizeof"],"line":3}
+fnc main() -> int32 {
+    sizeof Missing
+    return 0i32
+}

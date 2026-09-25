@@ -1,0 +1,4 @@
+// e2e: {"mode":"reject","error":["unsized","return","create","pointer"],"line":3}
+struct Node { Node next }
+fnc create() -> Node {}
+fnc main() -> int32 { return 0i32 }

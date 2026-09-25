@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["unsupported","uint8"],"line":3}
+fnc main() -> int32 {
+    def uint8 value = 1u8 def uint8 other = -value
+    return 0i32
+}

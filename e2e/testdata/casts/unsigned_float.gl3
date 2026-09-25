@@ -1,0 +1,6 @@
+// e2e: {"mode":"run"}
+fnc convert(uint32 value) -> float { return value as float }
+fnc main() -> int32 {
+    if !(convert(4000000000u32) == 4000000000.0) { return 1i32 }
+    return 0i32
+}

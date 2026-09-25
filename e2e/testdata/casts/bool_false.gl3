@@ -1,0 +1,6 @@
+// e2e: {"mode":"run"}
+fnc convert(bool value) -> uint { return value as uint }
+fnc main() -> int32 {
+    if !(convert(false) == 0u64) { return 1i32 }
+    return 0i32
+}

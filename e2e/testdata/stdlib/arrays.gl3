@@ -1,0 +1,21 @@
+// e2e: {"mode":"run","exit":42}
+import "arrays"
+fnc main() -> int32 {
+    def int32* values = arr_new(sizeof int32) as int32*
+    def int32 i = 0i32
+    // Exceed both initial capacity (16) and first growth (32).
+    while i < 40i32 {
+        arr_push(&values as none*, &i as none*)
+        i = i + 1i32
+    }
+    i = 0i32
+    while i < 40i32 {
+        if values[i] != i { return 1i32 }
+        i = i + 1i32
+    }
+    arr_free(&values as none*)
+    def int32* literal = [int32; 3i32, 42i32]
+    def int32 result = literal[1]
+    arr_free(&literal as none*)
+    return result
+}

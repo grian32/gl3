@@ -1,0 +1,6 @@
+// e2e: {"mode":"reject","error":["argument","value","int32","bool"],"line":4}
+fnc helper(int32 value) -> int32 { return value }
+fnc main() -> int32 {
+    return helper(true)
+    return 0i32
+}

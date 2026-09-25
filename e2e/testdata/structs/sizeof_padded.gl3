@@ -1,0 +1,5 @@
+// e2e: {"mode":"shared","consumer":"../support/consumer_layout.c"}
+struct Padded { int8 tag int32 value int8 tail }
+struct Nested { int8 prefix Padded inner int16 suffix }
+fnc padded_size() -> uint { return sizeof Padded }
+fnc nested_size() -> uint { return sizeof Nested }

@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["const","global"],"line":3}
+fnc main() -> int32 {
+    def const int32 value = 1i32
+    return 0i32
+}

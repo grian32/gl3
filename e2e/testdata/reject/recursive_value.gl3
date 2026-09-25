@@ -1,0 +1,4 @@
+// e2e: {"mode":"reject","error":["unsized","parameter","pointer"],"line":3}
+struct Node { Node next }
+fnc helper(Node value) -> none {}
+fnc main() -> int32 { return 0i32 }

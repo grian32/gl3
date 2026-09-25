@@ -1,0 +1,18 @@
+// e2e: {"mode":"run","stdout":"dbgi8: -8\ndbgi16: -16\ndbgi32: -32\ndbgi64: -64\ndbgu8: 255\ndbgu16: 65535\ndbgu32: 4294967295\ndbgu64: 18446744073709551615\ndbgbool: true\ndbgbool: false\ndbgfloat: 1.50000000000000000000000000000000000000000000000000\ndbgstr: hello\ndbgchar: A(65)\n"}
+import "dbg"
+fnc main() -> int32 {
+    dbg_i8(-8i8)
+    dbg_i16(-16i16)
+    dbg_i32(-32i32)
+    dbg_i64(-64)
+    dbg_u8(255u8)
+    dbg_u16(65535u16)
+    dbg_u32(4294967295u32)
+    dbg_u64(18446744073709551615u64)
+    dbg_bool(true)
+    dbg_bool(false)
+    dbg_float(1.5)
+    dbg_str("hello")
+    dbg_char('A' as char)
+    return 0i32
+}

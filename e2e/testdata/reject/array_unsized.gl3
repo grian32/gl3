@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["array element","sized"],"line":3}
+fnc main() -> int32 {
+    [none;]
+    return 0i32
+}

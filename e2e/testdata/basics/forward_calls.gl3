@@ -1,0 +1,4 @@
+// e2e: {"mode":"run","exit":17}
+fnc main() -> int32 { return forward(42i32) }
+fnc forward(int32 value) -> int32 { return identity(value) }
+private fnc identity(int32 value) -> int32 { value = 17i32 return value }

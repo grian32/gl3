@@ -1,0 +1,17 @@
+// e2e: {"mode":"run"}
+extern fnc malloc(uint size) -> none*
+extern fnc free(none* pointer) -> none
+fnc main() -> int32 {
+    def int32* data = malloc(16u64) as int32*
+    data[0] = 10i32
+    data[1u8] = 20i32
+    data[2i16] = 30i32
+    data[3u32] = 40i32
+    def int32* tail = data + 3i32
+    if *(tail - 2i8) != 20i32 { return 1i32 }
+    if tail[-1i32] != 30i32 { return 2i32 }
+    if *(data + 1u64) != 20i32 { return 3i32 }
+    if data == tail { return 4i32 }
+    free(data as none*)
+    return 0i32
+}

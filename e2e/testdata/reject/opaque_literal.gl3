@@ -1,0 +1,6 @@
+// e2e: {"mode":"reject","error":["opaque","struct"],"line":4}
+extern struct Handle
+fnc main() -> int32 {
+    Handle:{}
+    return 0i32
+}

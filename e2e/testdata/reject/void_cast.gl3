@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["cannot cast","none"],"line":3}
+fnc main() -> int32 {
+    1 as none
+    return 0i32
+}

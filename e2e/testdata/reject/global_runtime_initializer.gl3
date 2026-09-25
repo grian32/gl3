@@ -1,0 +1,4 @@
+// e2e: {"mode":"reject","error":["constant initializer","value"],"line":2}
+global int32 value = helper()
+fnc helper() -> int32 { return 42i32 }
+fnc main() -> int32 { return 0i32 }

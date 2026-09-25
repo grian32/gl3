@@ -1,0 +1,1 @@
+fnc imported(int32 value) -> int32 { return value }

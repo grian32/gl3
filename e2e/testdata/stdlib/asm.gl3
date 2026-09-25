@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","exit":42}
+import "asm"
+fnc main() -> int32 {
+    def int32* values = __asm__salloc(4, sizeof int32) as int32*
+    values[0] = 11i32
+    values[3] = 42i32
+    if values[0] != 11i32 { return 1i32 }
+    return values[3]
+}

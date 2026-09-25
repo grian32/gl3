@@ -1,0 +1,6 @@
+// e2e: {"mode":"reject","error":["opaque","Handle"],"line":4}
+extern struct Handle
+fnc main() -> int32 {
+    def Handle* value = 0 as Handle* value + 1
+    return 0i32
+}

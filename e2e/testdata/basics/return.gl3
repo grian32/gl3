@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":37}
+fnc main() -> int32 { return 37i32 }

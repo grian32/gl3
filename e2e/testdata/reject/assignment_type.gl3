@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["assignment","int32","bool"],"line":3}
+fnc main() -> int32 {
+    def int32 value = 1i32 value = false
+    return 0i32
+}

@@ -1,0 +1,6 @@
+// e2e: {"mode":"reject","error":["field","missing"],"line":4}
+struct Pair { int32 value }
+fnc main() -> int32 {
+    def Pair value = Pair:{1i32} return value.missing
+    return 0i32
+}

@@ -1,0 +1,17 @@
+// e2e: {"mode":"run"}
+struct Inner { int32 x int32 y }
+struct Outer { bool enabled Inner inner }
+fnc make(int32 x) -> Outer { return Outer:{true, Inner:{x, 9i32}} }
+fnc copy(Outer value) -> Outer { value.inner.x = 27i32 return value }
+fnc main() -> int32 {
+    def Outer original = make(12i32)
+    def Outer other = copy(original)
+    if original.inner.x != 12i32 { return 1i32 }
+    if other.inner.x != 27i32 { return 2i32 }
+    if !other.enabled { return 3i32 }
+    def int32* field = &other.inner.y
+    *field = 42i32
+    if other.inner.y != 42i32 { return 4i32 }
+    if make(19i32).inner.x != 19i32 { return 5i32 }
+    return 0i32
+}

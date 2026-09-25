@@ -1,0 +1,6 @@
+// e2e: {"mode":"run"}
+fnc convert(float value) -> int32 { return value as int32 }
+fnc main() -> int32 {
+    if !(convert(-7.75) == -7i32) { return 1i32 }
+    return 0i32
+}

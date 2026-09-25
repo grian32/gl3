@@ -1,0 +1,2 @@
+extern struct Handle
+fnc pass_handle(Handle* value) -> Handle* { return value }

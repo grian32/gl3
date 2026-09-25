@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":42}
+fnc set(int32** pointer) -> none { **pointer = 42i32 }
+fnc main() -> int32 {
+    def int32 value = 3i32
+    def int32* pointer = &value
+    def int32** indirect = &pointer
+    set(indirect)
+    if *pointer != 42i32 { return 1i32 }
+    if pointer != &value { return 2i32 }
+    return value
+}

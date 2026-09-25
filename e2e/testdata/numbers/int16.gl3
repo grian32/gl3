@@ -1,0 +1,29 @@
+// e2e: {"mode":"run"}
+fnc arithmetic(int16 a, int16 b) -> int16 { return (a + b) * b - a / b }
+fnc less(int16 a, int16 b) -> bool { return a < b }
+fnc le(int16 a, int16 b) -> bool { return a <= b }
+fnc greater(int16 a, int16 b) -> bool { return a > b }
+fnc ge(int16 a, int16 b) -> bool { return a >= b }
+fnc equal(int16 a, int16 b) -> bool { return a == b }
+fnc unequal(int16 a, int16 b) -> bool { return a != b }
+fnc negate(int16 x) -> int16 { return -x }
+fnc divide(int16 x, int16 y) -> int16 { return x / y }
+fnc main() -> int32 {
+    if !(arithmetic(12i16, 3i16) == 41i16) { return 1i32 }
+    if !(less(2i16, 3i16)) { return 2i32 }
+    if !(!less(3i16, 2i16)) { return 3i32 }
+    if !(le(2i16, 2i16)) { return 4i32 }
+    if !(!le(3i16, 2i16)) { return 5i32 }
+    if !(greater(3i16, 2i16)) { return 6i32 }
+    if !(!greater(2i16, 3i16)) { return 7i32 }
+    if !(ge(2i16, 2i16)) { return 8i32 }
+    if !(!ge(2i16, 3i16)) { return 9i32 }
+    if !(equal(2i16, 2i16)) { return 10i32 }
+    if !(!equal(2i16, 3i16)) { return 11i32 }
+    if !(unequal(2i16, 3i16)) { return 12i32 }
+    if !(!unequal(2i16, 2i16)) { return 13i32 }
+    if !(negate(7i16) == -7i16) { return 14i32 }
+    if !(divide(-7i16, 2i16) == -3i16) { return 15i32 }
+    if !(less(-1i16, 1i16)) { return 16i32 }
+    return 0i32
+}

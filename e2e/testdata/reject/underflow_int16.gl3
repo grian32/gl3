@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["invalid value","literal"],"line":3}
+fnc main() -> int32 {
+    def int16 value = -32769i16
+    return 0i32
+}

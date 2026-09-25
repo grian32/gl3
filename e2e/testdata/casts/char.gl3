@@ -1,0 +1,6 @@
+// e2e: {"mode":"run"}
+fnc convert(int8 value) -> char { return value as char }
+fnc main() -> int32 {
+    if !((convert('Z') as int) == ((90i8 as char) as int)) { return 1i32 }
+    return 0i32
+}

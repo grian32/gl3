@@ -1,0 +1,7 @@
+// e2e: {"mode":"shared","consumer":"../support/consumer_structs.c"}
+struct Small { int32 x int32 y }
+struct Mixed { float fraction int32 count }
+struct Large { int first int second int third }
+fnc pass_small(Small value) -> Small { return value }
+fnc pass_mixed(Mixed value) -> Mixed { return value }
+fnc pass_large(Large value) -> Large { return value }

@@ -1,0 +1,4 @@
+// e2e: {"mode":"run","exit":42}
+import "../support/left.gl3"
+import "../support/right.gl3"
+fnc main() -> int32 { return right(left()) }

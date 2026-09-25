@@ -1,0 +1,5 @@
+// e2e: {"mode":"reject","error":["dereference","unsized"],"line":3}
+fnc main() -> int32 {
+    def none* value = 0 as none*; *value
+    return 0i32
+}
