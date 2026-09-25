@@ -195,10 +195,25 @@ func (e *Emitter) emitFunction(function *hir.Function) error {
 	f := e.functions[function.Id]
 	block := llvmapi.AddBasicBlock(f, "body")
 	e.builder.SetInsertPointAtEnd(block)
+
+	e.locals = make([]llvmapi.Value, len(function.Locals))
+	for i, local := range function.Locals {
+		t, err := e.lowerType(local.Type)
+		if err != nil {
+			return err
+		}
+		e.locals[i] = e.builder.CreateAlloca(t, local.Name)
+	}
+
+	for i := range function.Parameters {
+		e.builder.CreateStore(f.Param(i), e.locals[i])
+	}
+
 	fallsThrough, err := e.emitBlock(&function.Body)
 	if err != nil {
 		return err
 	}
+
 	if fallsThrough && function.ReturnType.Base == hir.Void && function.ReturnType.Pointer == 0 {
 		e.builder.CreateRetVoid()
 	}
@@ -220,6 +235,12 @@ func (e *Emitter) emitBlock(block *hir.Block) (bool, error) {
 func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 	switch stmt := stmt.(type) {
 	case *hir.LocalDeclaration:
+		value, err := e.emitExpr(stmt.Initializer)
+		if err != nil {
+			return false, nil
+		}
+		e.builder.CreateStore(value, e.locals[stmt.ID])
+		return true, nil
 	case *hir.Return:
 		if stmt.Value == nil {
 			e.builder.CreateRetVoid()
@@ -248,6 +269,11 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 	switch expr := expr.(type) {
 	case *hir.LocalRef:
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateLoad(t, e.locals[expr.ID], ""), nil
 	case *hir.GlobalRef:
 	case *hir.IntegerLiteral:
 		typ, err := e.lowerType(expr.Type())
@@ -298,8 +324,9 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 }
 
 func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
-	switch place.(type) {
+	switch place := place.(type) {
 	case *hir.LocalPlace:
+		return e.locals[place.ID], nil
 	case *hir.GlobalPlace:
 	case *hir.DerefPlace:
 	case *hir.FieldPlace:
