@@ -107,21 +107,39 @@ func (e *Emitter) Module() llvmapi.Module {
 
 func (e *Emitter) Emit() error {
 	for _, s := range e.program.Structs {
-		e.declareStruct(&s)
-		if !s.Opaque {
-			e.defineStruct(&s)
+		err := e.declareStruct(&s)
+		if err != nil {
+			return err
 		}
 	}
 
 	for _, f := range e.program.Functions {
 		e.declareFunction(&f)
-		if !f.External {
-			e.emitFunction(&f)
-		}
 	}
 
 	for _, g := range e.program.Globals {
-		e.declareGlobal(&g)
+		err := e.declareGlobal(&g)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, s := range e.program.Structs {
+		if !s.Opaque {
+			err := e.defineStruct(&s)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, f := range e.program.Functions {
+		if !f.External {
+			err := e.emitFunction(&f)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -200,6 +218,10 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 	switch stmt := stmt.(type) {
 	case *hir.LocalDeclaration:
 	case *hir.Return:
+		if stmt.Value == nil {
+			e.builder.CreateRetVoid()
+			return false, nil
+		}
 		value, err := e.emitExpr(stmt.Value)
 		if err != nil {
 			return false, err
@@ -207,6 +229,9 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		e.builder.CreateRet(value)
 		return false, nil
 	case *hir.ExpressionStatement:
+		// TODO: figure this out LO
+		_, err := e.emitExpr(stmt.Expr)
+		return true, err
 	case *hir.If:
 	case *hir.While:
 	case *hir.Break:
@@ -243,6 +268,16 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		return llvmapi.ConstInBoundsGEP(data.Type(), global, []llvmapi.Value{zero, zero}), nil
 	case *hir.Binary:
 	case *hir.Call:
+		f := e.functions[expr.Function]
+		params := []llvmapi.Value{}
+		for _, p := range expr.Args {
+			pe, err := e.emitExpr(p)
+			if err != nil {
+				return llvmapi.Value{}, nil
+			}
+			params = append(params, pe)
+		}
+		return e.builder.CreateCall(f.GlobalValueType(), f, params, ""), nil
 	case *hir.Cast:
 	case *hir.Unary:
 	case *hir.Assignment:
