@@ -321,9 +321,24 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		if err != nil {
 			return llvmapi.Value{}, err
 		}
-		return e.builder.CreateStore(ex, p), nil
+		e.builder.CreateStore(ex, p)
+		return ex, nil
 	case *hir.AddressOf:
+		p, err := e.emitPlace(expr.Target)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return p, nil
 	case *hir.Dereference:
+		ptr, err := e.emitExpr(expr.Pointer)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateLoad(t, ptr, ""), nil
 	case *hir.FieldAccess:
 	case *hir.StructLiteral:
 	case *hir.ArrayLiteral:
@@ -338,6 +353,7 @@ func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
 		return e.locals[place.ID], nil
 	case *hir.GlobalPlace:
 	case *hir.DerefPlace:
+		return e.emitExpr(place.Pointer)
 	case *hir.FieldPlace:
 	}
 	panic("emitter: emitPlace not implemented")
