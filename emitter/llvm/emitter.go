@@ -276,6 +276,45 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		}
 		return true, nil
 	case *hir.If:
+		cond, err := e.emitExpr(stmt.Condition)
+		if err != nil {
+			return false, err
+		}
+		f := e.builder.GetInsertBlock().Parent()
+		thenBlock := llvmapi.AddBasicBlock(f, "if.then")
+		endBlock := llvmapi.AddBasicBlock(f, "if.end")
+		falseBlock := endBlock
+		if stmt.Else != nil {
+			falseBlock = llvmapi.AddBasicBlock(f, "if.else")
+		}
+		e.builder.CreateCondBr(cond, thenBlock, falseBlock)
+
+		e.builder.SetInsertPointAtEnd(thenBlock)
+		thenFalls, err := e.emitBlock(&stmt.Then)
+		if err != nil {
+			return false, err
+		}
+		if thenFalls {
+			e.builder.CreateBr(endBlock)
+		}
+
+		if stmt.Else != nil {
+			e.builder.SetInsertPointAtEnd(falseBlock)
+			elseFalls, err := e.emitBlock(stmt.Else)
+			if err != nil {
+				return false, err
+			}
+			if elseFalls {
+				e.builder.CreateBr(endBlock)
+			}
+			if !thenFalls && !elseFalls {
+				endBlock.EraseFromParent()
+				return false, nil
+			}
+		}
+
+		e.builder.SetInsertPointAtEnd(endBlock)
+		return true, nil
 	case *hir.While:
 	case *hir.Break:
 	case *hir.Continue:
