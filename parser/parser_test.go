@@ -557,6 +557,8 @@ func TestExpressionAssociativityAndPostfix(t *testing.T) {
 	tests := []InputOutput{
 		{"a - b - c", "-(-(a, b), c)"},
 		{"a / b * c", "*(/(a, b), c)"},
+		{"a + b % c", "+(a, %(b, c))"},
+		{"a % b * c", "*(%(a, b), c)"},
 		{"a = b = c", "assign(a, assign(b, c))"},
 		{"a || b && c", "||(a, &&(b, c))"},
 		{"a && b || c", "||(&&(a, b), c)"},

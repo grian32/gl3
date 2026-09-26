@@ -545,6 +545,10 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 		return e.builder.CreateSDiv(l, r, ""), nil
 	case hir.UnsignedDivide:
 		return e.builder.CreateUDiv(l, r, ""), nil
+	case hir.SignedRemainder:
+		return e.builder.CreateSRem(l, r, ""), nil
+	case hir.UnsignedRemainder:
+		return e.builder.CreateURem(l, r, ""), nil
 	case hir.FloatAdd:
 		return e.builder.CreateFAdd(l, r, ""), nil
 	case hir.FloatSubtract:

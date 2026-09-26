@@ -244,6 +244,7 @@ struct_instance.field = value   // struct field assignment
 | `-`      | Subtraction           | `a - b`    |
 | `*`      | Multiplication        | `a * b`    |
 | `/`      | Division              | `a / b`    |
+| `%`      | Remainder (integers)  | `a % b`    |
 | `==`     | Equality              | `a == b`   |
 | `!=`     | Inequality            | `a != b`   |
 | `<`      | Less than             | `a < b`    |
@@ -262,7 +263,7 @@ struct_instance.field = value   // struct field assignment
 5. Comparison (`<`, `>`, `<=`, `>=`)
 6. Cast (`as`)
 7. Addition/Subtraction (`+`, `-`)
-8. Multiplication/Division (`*`, `/`)
+8. Multiplication/Division/Remainder (`*`, `/`, `%`)
 9. Prefix operators (`!`, `-`, `&`, `*`)
 10. Function call, member access, struct initialization
 11. Array indexing

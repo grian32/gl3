@@ -26,6 +26,7 @@ var precedences = map[lexer.TokenType]byte{
 	lexer.MINUS:    SUM,
 	lexer.ASTERISK: PRODUCT,
 	lexer.SLASH:    PRODUCT,
+	lexer.PERCENT:  PRODUCT,
 	lexer.LPAREN:   CALL,
 	lexer.DOT:      CALL, // same semantic as c
 	lexer.COLON:    CALL, // same semantic as c
@@ -88,6 +89,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.infixParseFns[lexer.PLUS] = p.parseInfixExpression
 	p.infixParseFns[lexer.MINUS] = p.parseInfixExpression
 	p.infixParseFns[lexer.SLASH] = p.parseInfixExpression
+	p.infixParseFns[lexer.PERCENT] = p.parseInfixExpression
 	p.infixParseFns[lexer.ASTERISK] = p.parseInfixExpression
 	p.infixParseFns[lexer.LAND] = p.parseInfixExpression
 	p.infixParseFns[lexer.LOR] = p.parseInfixExpression

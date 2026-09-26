@@ -873,6 +873,12 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 				op = hir.UnsignedDivide
 			}
 			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+		case "%":
+			op := hir.SignedRemainder
+			if unsigned {
+				op = hir.UnsignedRemainder
+			}
+			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
 		case "==":
 			return makeBinaryNode(hir.IntEqual, leftExpr, rightExpr, boolType), true
 		case "!=":

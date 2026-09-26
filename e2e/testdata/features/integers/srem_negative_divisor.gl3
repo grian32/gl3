@@ -1,0 +1,3 @@
+// e2e: {"mode":"run","exit":1}
+// The sign follows the left operand, not the right: 7 % -3 is 1.
+fnc main() -> int32 { return 7i32 % -3i32 }

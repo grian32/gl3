@@ -283,6 +283,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 	{name: "arithmetic boolean", source: `fnc sample() -> int32 {
  def bool x = true + false return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},
+	{name: "float remainder", source: `fnc sample(float a, float b) -> float { return a % b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "%", "float"}, line: 1}}},
 	{name: "logical integer", source: `fnc sample() -> int32 {
  def bool x = 1i32 && 2i32 return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "&&", "int32"}, line: 2}}},

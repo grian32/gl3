@@ -147,6 +147,8 @@ const (
 	IntMultiply
 	SignedDivide
 	UnsignedDivide
+	SignedRemainder
+	UnsignedRemainder
 	FloatAdd
 	FloatSubtract
 	FloatMultiply

@@ -15,6 +15,7 @@ const (
 	MINUS
 	ASTERISK
 	SLASH
+	PERCENT
 	SEMICOLON
 	ASSIGN
 	IDENTIFIER
@@ -71,6 +72,8 @@ func (tt TokenType) String() string {
 		return "+"
 	case SLASH:
 		return "/"
+	case PERCENT:
+		return "%"
 	case ASTERISK:
 		return "*"
 	case MINUS:

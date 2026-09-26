@@ -45,6 +45,7 @@ var singleCharToken = map[byte]TokenType{
 	'+': PLUS,
 	'*': ASTERISK,
 	'/': SLASH,
+	'%': PERCENT,
 	';': SEMICOLON,
 	'(': LPAREN,
 	')': RPAREN,
