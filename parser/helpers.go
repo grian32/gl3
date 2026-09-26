@@ -59,8 +59,10 @@ func (p *Parser) currError(t lexer.TokenType, pos *util.Position) {
 }
 
 func (p *Parser) appendError(pos *util.Position, msg string, v ...any) {
+	// Callers often pass &p.currToken.Position, which moves as parsing continues.
+	snapshot := *pos
 	p.Errors = append(p.Errors, util.PositionError{
-		Position: pos,
+		Position: &snapshot,
 		Msg:      fmt.Sprintf(msg, v...),
 	})
 }

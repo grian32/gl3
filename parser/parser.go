@@ -190,6 +190,9 @@ func (p *Parser) parseExpression(precendence byte) Expression {
 		//}
 
 		leftExp = infix(leftExp)
+		if leftExp == nil {
+			return nil
+		}
 	}
 
 	return leftExp

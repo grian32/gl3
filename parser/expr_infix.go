@@ -54,6 +54,9 @@ func (p *Parser) parseAssignExpression(left Expression) Expression {
 	p.NextToken()
 
 	expr.Right = p.parseExpression(LOWEST)
+	if expr.Right == nil {
+		return nil
+	}
 
 	return expr
 }
@@ -75,16 +78,16 @@ func (p *Parser) parseArrayIndexExpression(left Expression) Expression {
 }
 
 func (p *Parser) parseCallExpression(left Expression) Expression {
+	identExpr, ok := left.(*IdentifierExpression)
+	if !ok {
+		p.appendError(&p.currToken.Position, "only functions can be called; missing `;` before `(`?")
+		return nil
+	}
 	leftPos := left.Position()
-	exp := &CallExpression{Token: p.currToken, position: util.Position{
+	exp := &CallExpression{Token: p.currToken, Function: identExpr, position: util.Position{
 		StartLine: leftPos.StartLine,
 		StartCol:  leftPos.StartCol,
 	}}
-	if identExpr, ok := left.(*IdentifierExpression); ok {
-		exp.Function = identExpr
-	} else {
-		return nil
-	}
 	if !p.expectCurr(lexer.LPAREN) {
 		return nil
 	}

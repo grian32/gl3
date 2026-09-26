@@ -1299,3 +1299,30 @@ func TestStructFieldsPreserveDuplicates(t *testing.T) {
 		t.Errorf("want %q, got %q", want, got)
 	}
 }
+
+func TestCallNonFunctionError(t *testing.T) {
+	tests := map[string]struct {
+		input     string
+		line, col uint32
+	}{
+		"literal callee": {"fnc main() -> int32 { return 12i32(1i32) }", 1, 35},
+		// Newlines don't end statements, so a line starting with ( continues the previous one.
+		"missing semicolon": {"fnc main() -> int32 {\n x = 12i32\n (x)\n return x\n}", 3, 2},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			p := New(lexer.New(test.input))
+			p.ParseProgram()
+			for _, err := range p.Errors {
+				if strings.Contains(err.Msg, "only functions can be called") {
+					if err.Position.StartLine != test.line || err.Position.StartCol != test.col {
+						t.Errorf("error at %d:%d, want %d:%d", err.Position.StartLine, err.Position.StartCol, test.line, test.col)
+					}
+					return
+				}
+			}
+			t.Errorf("expected a call diagnostic, got %v", p.Errors)
+		})
+	}
+}
