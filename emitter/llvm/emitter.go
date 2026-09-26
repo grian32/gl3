@@ -16,6 +16,7 @@ type Emitter struct {
 	module       llvmapi.Module
 	builder      llvmapi.Builder
 	target       llvmapi.TargetMachine
+	targetData   llvmapi.TargetData
 	optimization int
 
 	structs   []llvmapi.Type
@@ -74,7 +75,6 @@ func New(program *hir.Program, moduleName string, optimization int) (*Emitter, e
 	}
 
 	data := machine.CreateTargetData()
-	defer data.Dispose()
 
 	context := llvmapi.NewContext()
 	module := context.NewModule(moduleName)
@@ -87,6 +87,7 @@ func New(program *hir.Program, moduleName string, optimization int) (*Emitter, e
 		module:       module,
 		builder:      context.NewBuilder(),
 		target:       machine,
+		targetData:   data,
 		optimization: optimization,
 		structs:      make([]llvmapi.Type, len(program.Structs)),
 		functions:    make([]llvmapi.Value, len(program.Functions)),
@@ -99,6 +100,7 @@ func (e *Emitter) Close() {
 	e.module.Dispose()
 	e.context.Dispose()
 	e.target.Dispose()
+	e.targetData.Dispose()
 }
 
 func (e *Emitter) Module() llvmapi.Module {
@@ -363,6 +365,11 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 	case *hir.StructLiteral:
 	case *hir.ArrayLiteral:
 	case *hir.Sizeof:
+		lowered, err := e.lowerType(expr.OperandType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return llvmapi.ConstInt(e.context.Int64Type(), e.targetData.TypeAllocSize(lowered), false), nil
 	}
 	panic("emitter: emitExpr not implemented")
 }
