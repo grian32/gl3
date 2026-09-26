@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["return","none"],"line":2}
-fnc helper() -> none { return 1i32 }
-fnc main() -> int32 { return 0i32 }

@@ -1,4 +1,0 @@
-struct Pair { int32 value }
-global const int32 answer = 42i32
-private fnc hidden() -> int32 { return 42i32 }
-fnc make() -> Pair { return Pair:{hidden()} }

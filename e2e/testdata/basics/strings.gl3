@@ -1,7 +1,0 @@
-// e2e: {"mode":"run","stdout":"hello\nworld\t\"quoted\"\\end\r!\n\n"}
-extern fnc puts(char* text) -> int32
-fnc main() -> int32 {
-    puts("hello\nworld\t\"quoted\"\\end\r!")
-    puts("")
-    return 0i32
-}

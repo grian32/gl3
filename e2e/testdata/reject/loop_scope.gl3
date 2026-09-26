@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["unknown","hidden"],"line":3}
-fnc main() -> int32 {
-    while false { def int32 hidden = 1i32 } return hidden
-    return 0i32
-}

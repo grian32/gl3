@@ -1,6 +1,0 @@
-// e2e: {"mode":"run"}
-fnc convert(int32 value) -> int32 { return value as int32 }
-fnc main() -> int32 {
-    if !(convert(42i32) == 42i32) { return 1i32 }
-    return 0i32
-}

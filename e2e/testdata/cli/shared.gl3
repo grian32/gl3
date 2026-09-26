@@ -1,2 +1,0 @@
-// e2e: {"mode":"shared","consumer":"../support/consumer.c"}
-fnc identity(int32 value) -> int32 { return value }

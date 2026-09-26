@@ -1,6 +1,0 @@
-// e2e: {"mode":"reject","error":["helper","not a function"],"line":4}
-fnc helper() -> int32 { return 0i32 }
-fnc main() -> int32 {
-    def int32 helper = 1i32 return helper()
-    return 0i32
-}

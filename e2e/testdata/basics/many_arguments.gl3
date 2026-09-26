@@ -1,3 +1,0 @@
-// e2e: {"mode":"run","exit":42}
-fnc choose(int32 a, int32 b, int32 c, int32 d, int32 e, int32 f, int32 g, int32 h) -> int32 { return h }
-fnc main() -> int32 { return choose(1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 42i32) }

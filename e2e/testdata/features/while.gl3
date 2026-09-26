@@ -1,0 +1,27 @@
+// e2e: {"mode":"run","exit":42}
+// Loops are driven by bools only, so no arithmetic or comparisons are needed.
+fnc main() -> int32 {
+    while false { return 1i32 }
+    def int32 result = 0i32
+    def bool again = true
+    while again {
+        again = false
+        result = 7i32
+    }
+    if result != 7i32 { return 2i32 }
+    def bool first = true
+    def bool skipped = true
+    while first {
+        first = false
+        continue;
+        skipped = false
+    }
+    if skipped { } else { return 3i32 }
+    def bool outer = true
+    while outer {
+        outer = false
+        while true { break }
+        result = 42i32
+    }
+    return result
+}

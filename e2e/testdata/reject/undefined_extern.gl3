@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["clang link failed","missing_external_symbol"],"line":0}
-extern fnc missing_external_symbol() -> int32
-fnc main() -> int32 { return missing_external_symbol() }

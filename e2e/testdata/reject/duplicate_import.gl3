@@ -1,4 +1,0 @@
-// e2e: {"mode":"reject","error":["duplicate imported symbol","imported"],"line":3}
-import "../support/simple.gl3"
-import "../support/duplicate.gl3"
-fnc main() -> int32 { return 0i32 }

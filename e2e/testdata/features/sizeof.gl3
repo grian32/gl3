@@ -1,0 +1,10 @@
+// e2e: {"mode":"run"}
+struct Padded { int8 a int32 b int8 c }
+fnc main() -> int32 {
+    if sizeof int8 != 1u64 { return 1i32 }
+    if sizeof int32 != 4u64 { return 2i32 }
+    if sizeof int != 8u64 { return 3i32 }
+    if sizeof Padded != 12u64 { return 4i32 }
+    if sizeof int32* != 8u64 { return 5i32 }
+    return 0i32
+}

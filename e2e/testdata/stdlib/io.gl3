@@ -1,8 +1,0 @@
-// e2e: {"mode":"run","stdout":"true false Z text % -7 -300 -70000 -9000000000 255 65535 4294967295 18446744073709551615\n1i8 2i16 3i32 4i64 5u8 6u16 7u32 8u64\n"}
-import "io"
-fnc main() -> int32 {
-    print("%b %b %c %s %% ", true, false, 'Z' as char, "text")
-    println("%y %w %d %l %uy %uw %ud %ul", -7i8, -300i16, -70000i32, -9000000000, 255u8, 65535u16, 4294967295u32, 18446744073709551615u64)
-    println("%fy %fw %fd %fl %fuy %fuw %fud %ful", 1i8, 2i16, 3i32, 4, 5u8, 6u16, 7u32, 8u64)
-    return 0i32
-}

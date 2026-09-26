@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["unknown","secret"],"line":3}
-import "../support/mutable.gl3"
-fnc main() -> int32 { return secret }

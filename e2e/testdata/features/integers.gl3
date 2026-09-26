@@ -1,0 +1,13 @@
+// e2e: {"mode":"run"}
+fnc main() -> int32 {
+    if 40i32 + 2i32 != 42i32 { return 1i32 }
+    if 50i32 - 8i32 != 42i32 { return 2i32 }
+    if 6i32 * 7i32 != 42i32 { return 3i32 }
+    if -7i32 / 2i32 != -3i32 { return 4i32 }
+    if 4000000000u32 / 2u32 != 2000000000u32 { return 5i32 }
+    if 2i32 + 5i32 * 8i32 != 42i32 { return 6i32 }
+    def int32 value = 42i32
+    if -value != -42i32 { return 7i32 }
+    if 127i8 + 1i8 != -128i8 { return 8i32 }
+    return 0i32
+}

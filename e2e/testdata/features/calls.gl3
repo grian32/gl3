@@ -1,0 +1,13 @@
+// e2e: {"mode":"run","exit":42}
+fnc second(int32 a, int32 b) -> int32 { return b }
+fnc clobber(int32 value) -> none { value = 0i32 }
+fnc nothing() -> none { return }
+fnc main() -> int32 {
+    def int32 value = 42i32
+    clobber(value)
+    nothing()
+    later()
+    return second(1i32, identity(value))
+}
+fnc identity(int32 value) -> int32 { return value }
+fnc later() -> int32 { return 9i32 }

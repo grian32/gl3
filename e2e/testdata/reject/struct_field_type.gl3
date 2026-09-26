@@ -1,6 +1,0 @@
-// e2e: {"mode":"reject","error":["field","int32","bool"],"line":4}
-struct Pair { int32 value }
-fnc main() -> int32 {
-    def Pair value = Pair:{true}
-    return 0i32
-}

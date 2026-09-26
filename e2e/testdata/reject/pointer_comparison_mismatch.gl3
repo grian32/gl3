@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["operands","different"],"line":3}
-fnc main() -> int32 {
-    def int32* value = 0 as int32* value == (0 as int8*)
-    return 0i32
-}

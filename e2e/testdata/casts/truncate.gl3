@@ -1,6 +1,0 @@
-// e2e: {"mode":"run"}
-fnc convert(uint32 value) -> uint16 { return value as uint16 }
-fnc main() -> int32 {
-    if !(convert(65537u32) == 1u16) { return 1i32 }
-    return 0i32
-}

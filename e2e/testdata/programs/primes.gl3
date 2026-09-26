@@ -1,0 +1,35 @@
+// e2e: {"mode":"run","exit":168}
+// Sieve of Eratosthenes: there are 168 primes below 1000.
+extern fnc malloc(uint size) -> none*
+extern fnc free(none* pointer) -> none
+fnc sieve(bool* composite, int32 limit) -> none {
+    def int32 i = 2i32
+    while i * i < limit {
+        if !composite[i] {
+            def int32 multiple = i * i
+            while multiple < limit {
+                composite[multiple] = true
+                multiple = multiple + i
+            }
+        }
+        i = i + 1i32
+    }
+}
+fnc main() -> int32 {
+    def int32 limit = 1000i32
+    def bool* composite = malloc(limit as uint) as bool*
+    def int32 i = 0i32
+    while i < limit {
+        composite[i] = false
+        i = i + 1i32
+    }
+    sieve(composite, limit)
+    def int32 count = 0i32
+    i = 2i32
+    while i < limit {
+        if !composite[i] { count = count + 1i32 }
+        i = i + 1i32
+    }
+    free(composite as none*)
+    return count
+}

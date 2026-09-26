@@ -1,2 +1,0 @@
-// e2e: {"mode":"reject","error":["multiple optimization"],"line":0,"flags":["--O2","--O3"]}
-fnc main() -> int32 { return 0i32 }

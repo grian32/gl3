@@ -1,4 +1,0 @@
-// e2e: {"mode":"reject","error":["public function","private struct","Handle"],"line":3}
-private extern struct Handle
-extern fnc helper() -> Handle*
-fnc main() -> int32 { return 0i32 }

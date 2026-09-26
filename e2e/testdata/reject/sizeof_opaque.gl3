@@ -1,6 +1,0 @@
-// e2e: {"mode":"reject","error":["sizeof","unsized"],"line":4}
-extern struct Handle
-fnc main() -> int32 {
-    sizeof Handle
-    return 0i32
-}

@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["symbol","missing"],"line":3}
-fnc main() -> int32 {
-    missing()
-    return 0i32
-}

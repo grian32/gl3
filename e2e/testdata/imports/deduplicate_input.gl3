@@ -1,3 +1,0 @@
-// e2e: {"mode":"run","exit":42,"inputs":["../support/simple.gl3","../support/./simple.gl3"]}
-import "../support/simple.gl3"
-fnc main() -> int32 { return imported(42i32) }

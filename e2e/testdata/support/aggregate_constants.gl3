@@ -1,3 +1,0 @@
-struct Coordinates { int32 x int32 y }
-struct Configuration { bool enabled Coordinates origin }
-global const Configuration config = Configuration:{true, Coordinates:{17i32, 42i32}}

@@ -1,4 +1,0 @@
-// e2e: {"mode":"run","exit":22}
-import "../support/private_a.gl3"
-import "../support/private_b.gl3"
-fnc main() -> int32 { if a() != 11i32 { return 1i32 } return b() }

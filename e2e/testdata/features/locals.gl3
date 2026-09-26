@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","exit":42}
+fnc main() -> int32 {
+    def int32 first = 1i32
+    def int32 second = first
+    first = 7i32
+    def int32 third = 0i32
+    third = second = 42i32
+    return third
+}

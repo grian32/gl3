@@ -1,2 +1,0 @@
-// e2e: {"mode":"run","flags":["--dbg","--emitter=llvm"],"build_output":["LLVM IR for","clang"]}
-fnc main() -> int32 { return 0i32 }

@@ -1,8 +1,0 @@
-// e2e: {"mode":"run"}
-fnc identity(uint32 x) -> uint32 { return x }
-fnc main() -> int32 {
-    if !(identity(0u32) == 0u32) { return 1i32 }
-    if !(identity(4294967295u32) == 4294967295u32) { return 2i32 }
-    if !(identity(0x2Au32) == 42u32) { return 3i32 }
-    return 0i32
-}

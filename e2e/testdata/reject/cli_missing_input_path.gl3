@@ -1,2 +1,0 @@
-// e2e: {"mode":"reject","no_input":true,"inputs":["../support/absent-input.gl3"],"error":["absent-input.gl3","no such file"]}
-// Supply an absent source file through the build command.

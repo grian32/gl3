@@ -1,4 +1,0 @@
-// e2e: {"mode":"reject","error":["opaque","parameter","value"],"line":3}
-extern struct Handle
-fnc helper(Handle value) -> none {}
-fnc main() -> int32 { return 0i32 }

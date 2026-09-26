@@ -1,6 +1,0 @@
-// e2e: {"mode":"run","exit":42}
-struct Item { int32 value }
-fnc main() -> int32 {
-    def Item* items = [Item; Item:{3i32}, Item:{42i32}]
-    return items[1].value
-}

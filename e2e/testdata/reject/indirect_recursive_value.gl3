@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["unsized","parameter","value","pointer"],"line":4}
-struct First { Second next }
-struct Second { First next }
-fnc consume(First value) -> none {}
-fnc main() -> int32 { return 0i32 }

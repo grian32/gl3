@@ -1,0 +1,18 @@
+// e2e: {"mode":"run"}
+fnc main() -> int32 {
+    def int8 small = -7i8
+    def uint8 byte = 200u8
+    def int wide = 300;
+    def float real = 2.75
+    if small as int != -7 { return 1i32 }
+    if byte as int32 != 200i32 { return 2i32 }
+    if wide as uint8 != 44u8 { return 3i32 }
+    if wide as int != 300 { return 4i32 }
+    if real as int32 != 2i32 { return 5i32 }
+    if real as uint32 != 2u32 { return 6i32 }
+    if (small as float) as int32 != -7i32 { return 7i32 }
+    if (byte as float) as int32 != 200i32 { return 8i32 }
+    if true as int32 != 1i32 { return 9i32 }
+    if ((4096 as int32*) as none*) as uint != 4096u64 { return 10i32 }
+    return 0i32
+}

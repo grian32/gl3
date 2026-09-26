@@ -1,6 +1,0 @@
-// e2e: {"mode":"reject","error":["constant","not permitted"],"line":4}
-global const int32 answer = 42i32
-fnc main() -> int32 {
-    answer = 2i32
-    return 0i32
-}

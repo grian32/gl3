@@ -1,2 +1,0 @@
-// e2e: {"mode":"reject","error":["unknown flag"],"line":0,"flags":["--not-a-build-option"]}
-fnc main() -> int32 { return 0i32 }

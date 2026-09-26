@@ -1,2 +1,0 @@
-// e2e: {"mode":"run","exit":65}
-fnc main() -> int32 { def int8 letter = 'A' return letter as int32 }

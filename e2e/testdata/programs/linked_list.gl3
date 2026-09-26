@@ -1,0 +1,42 @@
+// e2e: {"mode":"run","stdout":"54321\n"}
+// Build a heap-allocated list, reverse it in place, and print it digit by digit.
+extern fnc malloc(uint size) -> none*
+extern fnc free(none* pointer) -> none
+extern fnc putchar(int32 c) -> int32
+struct Node { int32 value Node* next }
+fnc push(Node* head, int32 value) -> Node* {
+    def Node* node = malloc(sizeof Node) as Node*;
+    *node = Node:{value, head}
+    return node
+}
+fnc reverse(Node* head) -> Node* {
+    def Node* previous = 0 as Node*
+    while head != (0 as Node*) {
+        def Node* next = (*head).next;
+        (*head).next = previous
+        previous = head
+        head = next
+    }
+    return previous
+}
+fnc main() -> int32 {
+    def Node* list = 0 as Node*
+    def int32 i = 1i32
+    while i <= 5i32 {
+        list = push(list, i)
+        i = i + 1i32
+    }
+    list = reverse(reverse(list))
+    def Node* cursor = list
+    def int32 sum = 0i32
+    while cursor != (0 as Node*) {
+        putchar(48i32 + (*cursor).value)
+        sum = sum + (*cursor).value
+        def Node* dead = cursor
+        cursor = (*cursor).next
+        free(dead as none*)
+    }
+    putchar(10i32)
+    if sum != 15i32 { return 1i32 }
+    return 0i32
+}

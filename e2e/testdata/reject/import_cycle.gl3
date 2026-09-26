@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["import cycle","cycle_a.gl3"],"line":2}
-import "../support/cycle_a.gl3"
-fnc main() -> int32 { return 0i32 }

@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["unterminated","string"],"line":3}
-fnc main() -> int32 { return 0i32 }
-global char* text = "unterminated

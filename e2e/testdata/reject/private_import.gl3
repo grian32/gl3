@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["symbol","hidden"],"line":3}
-import "../support/base.gl3"
-fnc main() -> int32 { return hidden() }

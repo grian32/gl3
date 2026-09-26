@@ -1,0 +1,64 @@
+// e2e: {"mode":"run","stdout":"0\n7\n-42\n2147483647\n1234 has 4 digits\n"}
+// Format integers into a stack of chars and print them with puts.
+extern fnc puts(char* text) -> int32
+extern fnc malloc(uint size) -> none*
+extern fnc free(none* pointer) -> none
+struct Buffer { char* data int32 length }
+fnc append(Buffer* buffer, int8 c) -> none {
+    def char* data = (*buffer).data
+    data[(*buffer).length] = c as char;
+    (*buffer).length = (*buffer).length + 1i32
+}
+fnc append_text(Buffer* buffer, char* text) -> none {
+    def int32 i = 0i32
+    while (text[i] as int8) != 0i8 {
+        append(buffer, text[i] as int8)
+        i = i + 1i32
+    }
+}
+fnc digits(int value) -> int32 {
+    def int32 count = 1i32
+    while value >= 10 {
+        value = value / 10;
+        count = count + 1i32
+    }
+    return count
+}
+fnc append_int(Buffer* buffer, int value) -> none {
+    if value < 0 {
+        append(buffer, '-')
+        value = -value
+    }
+    def int32 index = (*buffer).length + digits(value) - 1i32;
+    (*buffer).length = index + 1i32
+    def char* data = (*buffer).data
+    while true {
+        def int digit = value - value / 10 * 10;
+        data[index] = ((digit as int8) + '0') as char
+        value = value / 10;
+        index = index - 1i32
+        if value == 0 { break }
+    }
+}
+fnc print_int(int value) -> none {
+    def Buffer buffer = Buffer:{malloc(32u64) as char*, 0i32}
+    append_int(&buffer, value)
+    append(&buffer, 0i8)
+    puts(buffer.data)
+    free(buffer.data as none*)
+}
+fnc main() -> int32 {
+    print_int(0)
+    print_int(7)
+    print_int(-42)
+    print_int(2147483647)
+    def Buffer buffer = Buffer:{malloc(64u64) as char*, 0i32}
+    append_int(&buffer, 1234)
+    append_text(&buffer, " has ")
+    append_int(&buffer, digits(1234) as int)
+    append_text(&buffer, " digits")
+    append(&buffer, 0i8)
+    puts(buffer.data)
+    free(buffer.data as none*)
+    return 0i32
+}

@@ -1,0 +1,14 @@
+// e2e: {"mode":"run"}
+fnc and(bool a, bool b) -> bool { return a && b }
+fnc or(bool a, bool b) -> bool { return a || b }
+fnc not(bool a) -> bool { return !a }
+fnc main() -> int32 {
+    if and(true, false) { return 1i32 }
+    if not(and(true, true)) { return 2i32 }
+    if or(false, false) { return 3i32 }
+    if not(or(false, true)) { return 4i32 }
+    if not(not(true)) { } else { return 5i32 }
+    if true == false { return 6i32 }
+    if false != false { return 7i32 }
+    return 0i32
+}

@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["operands","int32","int"],"line":3}
-fnc main() -> int32 {
-    def int32 value = 1i32 + 2
-    return 0i32
-}

@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","stdout":"hi\n\"there\"\tok\n"}
+extern fnc puts(char* text) -> int32
+fnc main() -> int32 {
+    if 'b' != 98i8 { return 1i32 }
+    def char* text = "hi"
+    puts(text)
+    puts("\"there\"\tok")
+    return 0i32
+}

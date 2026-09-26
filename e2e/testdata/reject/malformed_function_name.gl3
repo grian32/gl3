@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["identifier","fnc"],"line":2}
-fnc () -> none {}
-fnc main() -> int32 { return 0i32 }

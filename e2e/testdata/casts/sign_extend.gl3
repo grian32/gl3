@@ -1,6 +1,0 @@
-// e2e: {"mode":"run"}
-fnc convert(int8 value) -> int { return value as int }
-fnc main() -> int32 {
-    if !(convert(-7i8) == -7) { return 1i32 }
-    return 0i32
-}

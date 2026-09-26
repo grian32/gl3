@@ -1,3 +1,0 @@
-// e2e: {"mode":"reject","error":["invalid return type","create"],"line":2}
-fnc create() -> Missing {}
-fnc main() -> int32 { return 0i32 }

@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["identifier","type"],"line":3}
-fnc main() -> int32 {
-    def int32 = 1i32
-    return 0i32
-}

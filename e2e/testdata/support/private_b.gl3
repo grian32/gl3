@@ -1,2 +1,0 @@
-private fnc helper() -> int32 { return 22i32 }
-fnc b() -> int32 { return helper() }

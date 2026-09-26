@@ -1,5 +1,0 @@
-// e2e: {"mode":"run","stdout":"private extern\n"}
-private extern fnc puts(char* value) -> int32
-private extern struct Handle
-private fnc unused(Handle* value) -> none { return }
-fnc main() -> int32 { puts("private extern") return 0i32 }

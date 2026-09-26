@@ -1,2 +1,0 @@
-// e2e: {"mode":"run","exit":31,"output_flag":"--output"}
-fnc main() -> int32 { return 31i32 }

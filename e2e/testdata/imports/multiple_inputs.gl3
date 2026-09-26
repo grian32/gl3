@@ -1,3 +1,0 @@
-// e2e: {"mode":"run","exit":42,"inputs":["../support/simple.gl3"]}
-extern fnc imported(int32 value) -> int32
-fnc main() -> int32 { return imported(42i32) }

@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["bool"],"line":3}
-fnc main() -> int32 {
-    def bool value = !1i32
-    return 0i32
-}

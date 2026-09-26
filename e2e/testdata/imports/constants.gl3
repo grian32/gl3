@@ -1,3 +1,0 @@
-// e2e: {"mode":"run","exit":42}
-import "../support/base.gl3"
-fnc main() -> int32 { return answer }

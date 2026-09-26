@@ -1,3 +1,0 @@
-struct Node { int32 value Node* next }
-fnc read_next(Node* node) -> int32 { return (*(*node).next).value }
-fnc pass_node(Node* node) -> Node* { return node }

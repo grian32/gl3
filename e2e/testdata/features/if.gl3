@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","exit":42}
+fnc main() -> int32 {
+    if false { return 1i32 }
+    if true { } else { return 2i32 }
+    def int32 result = 0i32
+    def bool condition = true
+    if condition { result = 42i32 } else { result = 3i32 }
+    if false { return 4i32 } else { return result }
+}

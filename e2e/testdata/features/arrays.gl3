@@ -1,0 +1,11 @@
+// e2e: {"mode":"run"}
+// Elements are read back by indexing, the one pointer feature this needs.
+struct Item { int32 value }
+fnc main() -> int32 {
+    def int32* values = [int32; 10i32, 20i32, 30i32]
+    if values[0] != 10i32 { return 1i32 }
+    if values[2] != 30i32 { return 2i32 }
+    def Item* items = [Item; Item:{3i32}, Item:{4i32}]
+    if items[1].value != 4i32 { return 3i32 }
+    return 0i32
+}

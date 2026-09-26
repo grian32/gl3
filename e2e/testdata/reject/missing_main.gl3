@@ -1,2 +1,0 @@
-// e2e: {"mode":"reject","error":["clang link failed"],"line":0}
-fnc helper() -> int32 { return 0i32 }

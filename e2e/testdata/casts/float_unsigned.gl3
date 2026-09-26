@@ -1,6 +1,0 @@
-// e2e: {"mode":"run"}
-fnc convert(float value) -> uint32 { return value as uint32 }
-fnc main() -> int32 {
-    if !(convert(7.75) == 7u32) { return 1i32 }
-    return 0i32
-}

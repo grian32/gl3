@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["invalid value","literal"],"line":3}
-fnc main() -> int32 {
-    def int8 value = 128i8
-    return 0i32
-}

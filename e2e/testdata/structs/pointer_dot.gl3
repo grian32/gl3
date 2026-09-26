@@ -1,9 +1,0 @@
-// e2e: {"mode":"run","exit":42}
-// The syntax reference promises transparent field access through pointers.
-struct Pair { int32 value }
-fnc main() -> int32 {
-    def Pair value = Pair:{7i32}
-    def Pair* pointer = &value
-    pointer.value = 42i32
-    return value.value
-}

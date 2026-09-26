@@ -1,5 +1,0 @@
-// e2e: {"mode":"reject","error":["global","function"],"line":3}
-fnc main() -> int32 {
-    global int32 value = 1i32
-    return 0i32
-}

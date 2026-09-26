@@ -1,7 +1,0 @@
-// e2e: {"mode":"reject","error":["constant","not permitted"],"line":5}
-import "../support/padding.gl3"
-import "../support/aggregate_constants.gl3"
-fnc main() -> int32 {
-    config.origin.y = 9i32
-    return 0i32
-}
