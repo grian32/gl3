@@ -6,6 +6,7 @@ import (
 	"gl3/lexer"
 	"gl3/parser"
 	"gl3/util"
+	"strings"
 )
 
 type Scope struct {
@@ -719,7 +720,7 @@ func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
 
 func (a *Analyzer) resolveField(baseType hir.Type, expr *parser.InfixExpression) (int, bool) {
 	if baseType.Base != hir.StructType || baseType.Pointer != 0 {
-		a.appendDiagnostic(expr.Position(), "cannot access field on non-struct type `%s`", baseType)
+		a.appendDiagnostic(expr.Position(), "cannot access field on non-struct type `%s`", a.typeName(baseType))
 		return 0, false
 	}
 	s := a.Structs[baseType.Struct]
@@ -736,11 +737,23 @@ func (a *Analyzer) resolveField(baseType hir.Type, expr *parser.InfixExpression)
 	return idx, true
 }
 
+func (a *Analyzer) typeName(t hir.Type) string {
+	if t.Base != hir.StructType {
+		return t.String()
+	}
+	return a.Structs[t.Struct].Name + strings.Repeat("*", int(t.Pointer))
+}
+
 func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, bool) {
 	if infixExpr.Operator == "." {
 		left, ok := a.checkExpr(infixExpr.Left)
 		if !ok {
 			return nil, false
+		}
+		if left.Type().Base == hir.StructType && left.Type().Pointer == 1 {
+			pointee := left.Type()
+			pointee.Pointer--
+			left = &hir.Dereference{ExprInfo: hir.ExprInfo{ResultType: pointee}, Pointer: left}
 		}
 		idx, ok := a.resolveField(left.Type(), infixExpr)
 		if !ok {
@@ -997,8 +1010,18 @@ func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
 			Pointer:  expr,
 		}, true
 	} else if fieldExpr, ok := expr.(*parser.InfixExpression); ok && fieldExpr.Operator == "." {
-		base, ok := a.checkPlace(fieldExpr.Left)
+		// A struct pointer base is dereferenced, so its value is enough and it
+		// need not be a place itself (e.g. a call returning a pointer).
+		left, ok := a.checkExpr(fieldExpr.Left)
 		if !ok {
+			return nil, false
+		}
+		var base hir.Place
+		if left.Type().Base == hir.StructType && left.Type().Pointer == 1 {
+			pointee := left.Type()
+			pointee.Pointer--
+			base = &hir.DerefPlace{ExprInfo: hir.ExprInfo{ResultType: pointee}, Pointer: left}
+		} else if base, ok = a.checkPlace(fieldExpr.Left); !ok {
 			return nil, false
 		}
 		idx, ok := a.resolveField(base.Type(), fieldExpr)

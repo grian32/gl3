@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":42}
+// Field access through a struct pointer dereferences it; getting the pointer needs &.
+struct Inner { int32 a int32 b }
+struct Pair { int32 value Inner inner }
+fnc main() -> int32 {
+    def Pair value = Pair:{1i32, Inner:{0i32, 0i32}}
+    def Pair* pointer = &value;
+    pointer.value = 30i32
+    pointer.inner.b = 12i32
+    return pointer.value + value.inner.b
+}
