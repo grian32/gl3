@@ -214,7 +214,7 @@ fnc idle() -> none { }`,
 					Fields: []hir.TypedName{
 						{Name: "z", Type: hir.Type{Base: hir.StructType, Struct: 1, Pointer: 1}},
 						{Name: "a", Type: hir.Type{Base: hir.Float}},
-						{Name: "text", Type: hir.Type{Base: hir.Char, Pointer: 2}},
+						{Name: "text", Type: hir.Type{Base: hir.Int8, Pointer: 2}},
 					},
 					FieldNames: map[string]int{"z": 0, "a": 1, "text": 2},
 				},
@@ -538,7 +538,7 @@ var externDeclarationTests = []struct {
 			Name: "read", Id: 0, Private: true, External: true,
 			Parameters: []hir.TypedName{
 				{Name: "count", Type: hir.Type{Base: hir.Int32}},
-				{Name: "buffer", Type: hir.Type{Base: hir.Char, Pointer: 1}},
+				{Name: "buffer", Type: hir.Type{Base: hir.Int8, Pointer: 1}},
 			},
 			ParameterNames: map[string]int{"count": 0, "buffer": 1},
 			ReturnType:     hir.Type{Base: hir.Int32},

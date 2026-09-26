@@ -22,7 +22,7 @@ func TestConvertVarType(t *testing.T) {
 		{"int32", lexer.VarType{Base: lexer.Int32}, Type{Base: Int32}, true},
 		{"int16", lexer.VarType{Base: lexer.Int16}, Type{Base: Int16}, true},
 		{"int8", lexer.VarType{Base: lexer.Int8}, Type{Base: Int8}, true},
-		{"char pointer", lexer.VarType{Base: lexer.Char, Pointer: 2}, Type{Base: Char, Pointer: 2}, true},
+		{"char aliases int8", lexer.VarType{Base: lexer.Char, Pointer: 2}, Type{Base: Int8, Pointer: 2}, true},
 		{"uint", lexer.VarType{Base: lexer.Uint}, Type{Base: Uint}, true},
 		{"uint32", lexer.VarType{Base: lexer.Uint32}, Type{Base: Uint32}, true},
 		{"uint16", lexer.VarType{Base: lexer.Uint16}, Type{Base: Uint16}, true},

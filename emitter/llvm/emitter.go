@@ -675,7 +675,7 @@ func (e *Emitter) lowerType(t hir.Type) (llvmapi.Type, error) {
 		lowered = e.context.Int32Type()
 	case hir.Int16, hir.Uint16:
 		lowered = e.context.Int16Type()
-	case hir.Int8, hir.Char, hir.Uint8:
+	case hir.Int8, hir.Uint8:
 		lowered = e.context.Int8Type()
 	case hir.Bool:
 		lowered = e.context.Int1Type()

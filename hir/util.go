@@ -17,8 +17,6 @@ func (t Type) String() string {
 		name = "int16"
 	case Int8:
 		name = "int8"
-	case Char:
-		name = "char"
 	case Uint:
 		name = "uint"
 	case Uint32:
@@ -75,8 +73,9 @@ func ConvertBaseType(bvt lexer.BaseVarType) BaseType {
 		return Int16
 	case lexer.Int8:
 		return Int8
+	// char is an alias of int8.
 	case lexer.Char:
-		return Char
+		return Int8
 	case lexer.Uint:
 		return Uint
 	case lexer.Uint32:

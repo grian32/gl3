@@ -8,7 +8,6 @@ const (
 	Int32
 	Int16
 	Int8
-	Char
 	Uint
 	Uint32
 	Uint16

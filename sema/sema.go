@@ -404,7 +404,7 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		}, true
 	case *parser.StringLiteral:
 		return &hir.StringLiteral{
-			ExprInfo: hir.InfoPtr(hir.Char, 1),
+			ExprInfo: hir.InfoPtr(hir.Int8, 1),
 			Value:    expr.Value,
 		}, true
 	case *parser.FloatLiteral:
@@ -548,7 +548,7 @@ func castIntegerInfo(t hir.Type) (bits uint8, signed bool) {
 		return 32, true
 	case hir.Int16:
 		return 16, true
-	case hir.Int8, hir.Char:
+	case hir.Int8:
 		return 8, true
 	case hir.Uint:
 		return 64, false
