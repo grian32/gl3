@@ -482,8 +482,28 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		return e.builder.CreateLoad(t, ptr, ""), nil
 	case *hir.FieldAccess:
+		base, err := e.emitExpr(expr.Base)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateExtractValue(base, expr.FieldIndex, ""), nil
 	case *hir.StructLiteral:
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		// Constant fields fold to a constant struct, so this also serves global initializers.
+		value := llvmapi.Undef(t)
+		for i, field := range expr.Fields {
+			fv, err := e.emitExpr(field)
+			if err != nil {
+				return llvmapi.Value{}, err
+			}
+			value = e.builder.CreateInsertValue(value, fv, i, "")
+		}
+		return value, nil
 	case *hir.ArrayLiteral:
+		panic("emitter: ArrayLiteral not implemented until the stdlib is ready")
 	case *hir.Sizeof:
 		lowered, err := e.lowerType(expr.OperandType)
 		if err != nil {
@@ -633,6 +653,15 @@ func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
 	case *hir.DerefPlace:
 		return e.emitExpr(place.Pointer)
 	case *hir.FieldPlace:
+		base, err := e.emitPlace(place.Base)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		t, err := e.lowerType(place.Base.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateStructGEP(t, base, place.FieldIndex, ""), nil
 	}
 	panic("emitter: emitPlace not implemented")
 }

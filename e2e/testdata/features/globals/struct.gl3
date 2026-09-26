@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":42}
+// Reading one field is the only way to observe a struct global.
+struct Inner { int32 a int32 b }
+struct Pair { int32 x Inner inner }
+global Pair pair = Pair:{7i32, Inner:{1i32, 42i32}}
+fnc main() -> int32 { return pair.inner.b }
