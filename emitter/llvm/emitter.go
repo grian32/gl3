@@ -321,6 +321,7 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		zero := llvmapi.ConstInt(e.context.Int32Type(), 0, false)
 		return llvmapi.ConstInBoundsGEP(data.Type(), global, []llvmapi.Value{zero, zero}), nil
 	case *hir.Binary:
+		return e.emitBinary(expr)
 	case *hir.Call:
 		f := e.functions[expr.Function]
 		params := []llvmapi.Value{}
@@ -333,6 +334,38 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		return e.builder.CreateCall(f.GlobalValueType(), f, params, ""), nil
 	case *hir.Cast:
+		v, err := e.emitExpr(expr.Value)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		t, err := e.lowerType(expr.ResultType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		switch expr.Kind {
+		case hir.IdentityCast, hir.PointerCast:
+			return v, nil
+		case hir.SignExtend:
+			return e.builder.CreateSExt(v, t, ""), nil
+		case hir.ZeroExtend:
+			return e.builder.CreateZExt(v, t, ""), nil
+		case hir.Truncate:
+			return e.builder.CreateTrunc(v, t, ""), nil
+		case hir.SignedIntToFloat:
+			return e.builder.CreateSIToFP(v, t, ""), nil
+		case hir.UnsignedIntToFloat:
+			return e.builder.CreateUIToFP(v, t, ""), nil
+		case hir.FloatToSignedInt:
+			return e.builder.CreateFPToSI(v, t, ""), nil
+		case hir.FloatToUnsignedInt:
+			return e.builder.CreateFPToUI(v, t, ""), nil
+		case hir.PointerToInt:
+			return e.builder.CreatePtrToInt(v, t, ""), nil
+		case hir.IntToPointer:
+			return e.builder.CreateIntToPtr(v, t, ""), nil
+		default:
+			panic(fmt.Sprintf("unexpected hir.CastKind: %#v", expr.Kind))
+		}
 	case *hir.Unary:
 		v, err := e.emitExpr(expr.Value)
 		if err != nil {
@@ -386,6 +419,136 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		return llvmapi.ConstInt(e.context.Int64Type(), e.targetData.TypeAllocSize(lowered), false), nil
 	}
 	panic("emitter: emitExpr not implemented")
+}
+
+func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
+	if expr.Op == hir.BoolAnd || expr.Op == hir.BoolOr {
+		return e.emitShortCircuit(expr)
+	}
+
+	l, err := e.emitExpr(expr.Left)
+	if err != nil {
+		return llvmapi.Value{}, err
+	}
+	r, err := e.emitExpr(expr.Right)
+	if err != nil {
+		return llvmapi.Value{}, err
+	}
+
+	switch expr.Op {
+	case hir.IntAdd:
+		return e.builder.CreateAdd(l, r, ""), nil
+	case hir.IntSubtract:
+		return e.builder.CreateSub(l, r, ""), nil
+	case hir.IntMultiply:
+		return e.builder.CreateMul(l, r, ""), nil
+	case hir.SignedDivide:
+		return e.builder.CreateSDiv(l, r, ""), nil
+	case hir.UnsignedDivide:
+		return e.builder.CreateUDiv(l, r, ""), nil
+	case hir.FloatAdd:
+		return e.builder.CreateFAdd(l, r, ""), nil
+	case hir.FloatSubtract:
+		return e.builder.CreateFSub(l, r, ""), nil
+	case hir.FloatMultiply:
+		return e.builder.CreateFMul(l, r, ""), nil
+	case hir.FloatDivide:
+		return e.builder.CreateFDiv(l, r, ""), nil
+	case hir.IntEqual, hir.BoolEqual:
+		return e.builder.CreateICmp(llvmapi.IntEQ, l, r, ""), nil
+	case hir.IntNotEqual, hir.BoolNotEqual:
+		return e.builder.CreateICmp(llvmapi.IntNE, l, r, ""), nil
+	case hir.SignedLess:
+		return e.builder.CreateICmp(llvmapi.IntSLT, l, r, ""), nil
+	case hir.SignedLessEqual:
+		return e.builder.CreateICmp(llvmapi.IntSLE, l, r, ""), nil
+	case hir.SignedGreater:
+		return e.builder.CreateICmp(llvmapi.IntSGT, l, r, ""), nil
+	case hir.SignedGreaterEqual:
+		return e.builder.CreateICmp(llvmapi.IntSGE, l, r, ""), nil
+	case hir.UnsignedLess:
+		return e.builder.CreateICmp(llvmapi.IntULT, l, r, ""), nil
+	case hir.UnsignedLessEqual:
+		return e.builder.CreateICmp(llvmapi.IntULE, l, r, ""), nil
+	case hir.UnsignedGreater:
+		return e.builder.CreateICmp(llvmapi.IntUGT, l, r, ""), nil
+	case hir.UnsignedGreaterEqual:
+		return e.builder.CreateICmp(llvmapi.IntUGE, l, r, ""), nil
+	// NaN compares unequal to everything, so != is the one unordered predicate.
+	case hir.FloatEqual:
+		return e.builder.CreateFCmp(llvmapi.FloatOEQ, l, r, ""), nil
+	case hir.FloatNotEqual:
+		return e.builder.CreateFCmp(llvmapi.FloatUNE, l, r, ""), nil
+	case hir.FloatLess:
+		return e.builder.CreateFCmp(llvmapi.FloatOLT, l, r, ""), nil
+	case hir.FloatLessEqual:
+		return e.builder.CreateFCmp(llvmapi.FloatOLE, l, r, ""), nil
+	case hir.FloatGreater:
+		return e.builder.CreateFCmp(llvmapi.FloatOGT, l, r, ""), nil
+	case hir.FloatGreaterEqual:
+		return e.builder.CreateFCmp(llvmapi.FloatOGE, l, r, ""), nil
+	case hir.PointerAdd, hir.PointerSubtract:
+		elementType := expr.Left.Type()
+		elementType.Pointer--
+		element, err := e.lowerType(elementType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		// GEP sign-extends narrow indices, so unsigned offsets are widened first.
+		offset := r
+		if r.Type().IntTypeWidth() < 64 {
+			switch expr.Right.Type().Base {
+			case hir.Uint32, hir.Uint16, hir.Uint8:
+				offset = e.builder.CreateZExt(r, e.context.Int64Type(), "")
+			default:
+				offset = e.builder.CreateSExt(r, e.context.Int64Type(), "")
+			}
+		}
+		if expr.Op == hir.PointerSubtract {
+			offset = e.builder.CreateNeg(offset, "")
+		}
+		return e.builder.CreateGEP(element, l, []llvmapi.Value{offset}, ""), nil
+	default:
+		panic(fmt.Sprintf("unexpected hir.BinaryOp: %#v", expr.Op))
+	}
+}
+
+func (e *Emitter) emitShortCircuit(expr *hir.Binary) (llvmapi.Value, error) {
+	// basically follows clang here
+	l, err := e.emitExpr(expr.Left)
+	if err != nil {
+		return llvmapi.Value{}, err
+	}
+	leftEnd := e.builder.GetInsertBlock()
+	f := leftEnd.Parent()
+	rhs := llvmapi.AddBasicBlock(f, "logic.rhs")
+	end := llvmapi.AddBasicBlock(f, "logic.end")
+
+	// && skips the right side when the left is false, || when it is true.
+	var skipped uint64
+	if expr.Op == hir.BoolAnd {
+		e.builder.CreateCondBr(l, rhs, end)
+	} else {
+		skipped = 1
+		e.builder.CreateCondBr(l, end, rhs)
+	}
+
+	e.builder.SetInsertPointAtEnd(rhs)
+	r, err := e.emitExpr(expr.Right)
+	if err != nil {
+		return llvmapi.Value{}, err
+	}
+	// The right side may have added blocks of its own.
+	rightEnd := e.builder.GetInsertBlock()
+	e.builder.CreateBr(end)
+
+	e.builder.SetInsertPointAtEnd(end)
+	phi := e.builder.CreatePHI(e.context.Int1Type(), "")
+	phi.AddIncoming(
+		[]llvmapi.Value{llvmapi.ConstInt(e.context.Int1Type(), skipped, false), r},
+		[]llvmapi.BasicBlock{leftEnd, rightEnd},
+	)
+	return phi, nil
 }
 
 func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
