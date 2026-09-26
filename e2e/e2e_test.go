@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -156,7 +157,18 @@ func TestFixtures(t *testing.T) {
 						}
 						return
 					}
-					built.success(t)
+					// Failures that aren't compiler panics get a --dbg rebuild so the log
+					// shows the emitted LLVM IR; a panic's stack trace is the better lead.
+					withIR := func(msg string) string {
+						if strings.Contains(diagnostics, "panic:") {
+							return msg
+						}
+						dbg := runCommand(t, work, 10*time.Second, compiler, append(slices.Clone(args), "--dbg")...)
+						return msg + "\n--- rebuilt with --dbg ---\n" + dbg.stdout + dbg.stderr
+					}
+					if built.code != 0 {
+						t.Fatal(withIR(fmt.Sprintf("%s exited %d\n%s", built.command, built.code, diagnostics)))
+					}
 					for _, fragment := range want.BuildOutput {
 						if !strings.Contains(diagnostics, fragment) {
 							t.Errorf("missing build output %q:\n%s", fragment, diagnostics)
@@ -180,7 +192,7 @@ func TestFixtures(t *testing.T) {
 					}
 					got := runCommand(t, work, 3*time.Second, output)
 					if got.code != want.Exit || got.stdout != want.Stdout || got.stderr != want.Stderr {
-						t.Fatalf("program exit=%d stdout=%q stderr=%q; want exit=%d stdout=%q stderr=%q", got.code, got.stdout, got.stderr, want.Exit, want.Stdout, want.Stderr)
+						t.Fatal(withIR(fmt.Sprintf("program exit=%d stdout=%q stderr=%q; want exit=%d stdout=%q stderr=%q", got.code, got.stdout, got.stderr, want.Exit, want.Stdout, want.Stderr)))
 					}
 				})
 			}

@@ -164,7 +164,7 @@ func (p *Parser) parseExpressionStatement() Statement {
 
 	stmt.Expression = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(lexer.SEMICOLON) {
+	if p.currTokenIs(lexer.SEMICOLON) {
 		p.NextToken()
 	}
 

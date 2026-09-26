@@ -316,8 +316,42 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		e.builder.SetInsertPointAtEnd(endBlock)
 		return true, nil
 	case *hir.While:
+		f := e.builder.GetInsertBlock().Parent()
+		cond := llvmapi.AddBasicBlock(f, "while.cond")
+		body := llvmapi.AddBasicBlock(f, "while.body")
+		end := llvmapi.AddBasicBlock(f, "while.end")
+
+		e.builder.CreateBr(cond)
+
+		e.builder.SetInsertPointAtEnd(cond)
+		cExpr, err := e.emitExpr(stmt.Condition)
+		if err != nil {
+			return false, err
+		}
+		e.builder.CreateCondBr(cExpr, body, end)
+
+		e.loops = append(e.loops, loopBlocks{
+			condition: cond,
+			exit:      end,
+		})
+		e.builder.SetInsertPointAtEnd(body)
+		falls, err := e.emitBlock(&stmt.Body)
+		if err != nil {
+			return false, err
+		}
+		if falls {
+			e.builder.CreateBr(cond)
+		}
+		e.loops = e.loops[:len(e.loops)-1]
+		e.builder.SetInsertPointAtEnd(end)
+
+		return true, nil
 	case *hir.Break:
+		e.builder.CreateBr(e.loops[len(e.loops)-1].exit)
+		return false, nil
 	case *hir.Continue:
+		e.builder.CreateBr(e.loops[len(e.loops)-1].condition)
+		return false, nil
 	}
 	panic("emitter: emitStmt not implemented")
 }
