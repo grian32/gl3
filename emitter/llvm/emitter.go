@@ -334,6 +334,20 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		return e.builder.CreateCall(f.GlobalValueType(), f, params, ""), nil
 	case *hir.Cast:
 	case *hir.Unary:
+		v, err := e.emitExpr(expr.Value)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		switch expr.Op {
+		case hir.BoolNot:
+			return e.builder.CreateNot(v, ""), nil
+		case hir.FloatNegate:
+			return e.builder.CreateFNeg(v, ""), nil
+		case hir.IntNegate:
+			return e.builder.CreateNeg(v, ""), nil
+		default:
+			panic(fmt.Sprintf("unexpected hir.UnaryOp: %#v", expr.Op))
+		}
 	case *hir.Assignment:
 		p, err := e.emitPlace(expr.Target)
 		if err != nil {
