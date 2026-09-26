@@ -193,6 +193,7 @@ func (a *Analyzer) checkBodies() bool {
 			return false
 		}
 
+		resolveNullptr(initExpr, g.Type)
 		if g.Type != initExpr.Type() {
 			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type(), g.Name, g.Type)
 			return false
@@ -271,6 +272,10 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 		if !ok {
 			return nil, false
 		}
+		if expr.Type().Base == hir.Null {
+			a.appendDiagnostic(stmt.Position(), "nullptr needs a pointer type from its context")
+			return nil, false
+		}
 		return &hir.ExpressionStatement{Expr: expr}, true
 	case *parser.ReturnStatement:
 		retType := a.currentFunction.ReturnType
@@ -289,6 +294,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
+		resolveNullptr(expr, retType)
 		if expr.Type() != retType {
 			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type(), a.currentFunction.Name, retType)
 			return nil, false
@@ -321,6 +327,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
+		resolveNullptr(expr, defType)
 		if defType != expr.Type() {
 			a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type(), defType)
 			return nil, false
@@ -398,6 +405,8 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		return a.convertIntLiteral(expr, false)
 	case *parser.PrefixExpression:
 		return a.checkPrefix(expr)
+	case *parser.NullptrLiteral:
+		return &hir.NullPointer{ExprInfo: hir.Info(hir.Null)}, true
 	case *parser.BooleanExpression:
 		return &hir.BooleanLiteral{
 			ExprInfo: hir.Info(hir.Bool),
@@ -456,6 +465,7 @@ func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiter
 			itemsOk = false
 			continue
 		}
+		resolveNullptr(value, elementType)
 		if value.Type() != elementType {
 			a.appendDiagnostic(item.Position(), "array element %d: expected `%s`, got `%s`", i+1, elementType, value.Type())
 			itemsOk = false
@@ -610,6 +620,7 @@ func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpressio
 			fieldsOk = false
 			continue
 		}
+		resolveNullptr(fieldExpr, s.Fields[i].Type)
 		if fieldExpr.Type() != s.Fields[i].Type {
 			a.appendDiagnostic(f.Position(), "wanted %s for field %d in literal for struct `%s`, got %s", s.Fields[i].Type, i, s.Name, fieldExpr.Type())
 			fieldsOk = false
@@ -744,6 +755,12 @@ func (a *Analyzer) typeName(t hir.Type) string {
 	return a.Structs[t.Struct].Name + strings.Repeat("*", int(t.Pointer))
 }
 
+func resolveNullptr(expr hir.Expr, want hir.Type) {
+	if null, ok := expr.(*hir.NullPointer); ok && null.ResultType.Base == hir.Null && want.Pointer > 0 {
+		null.ResultType = want
+	}
+}
+
 func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, bool) {
 	if infixExpr.Operator == "." {
 		left, ok := a.checkExpr(infixExpr.Left)
@@ -778,6 +795,9 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 	if !ok {
 		return nil, false
 	}
+	// Either side of a comparison may be nullptr.
+	resolveNullptr(leftExpr, rightExpr.Type())
+	resolveNullptr(rightExpr, leftExpr.Type())
 	if leftExpr.Type().Pointer > 0 {
 		// ptr eq ne
 		if infixExpr.Operator == "==" || infixExpr.Operator == "!=" {
@@ -960,6 +980,7 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 		return nil, false
 	}
 
+	resolveNullptr(rightExpr, place.Type())
 	if rightExpr.Type() != place.Type() {
 		a.appendDiagnostic(assignExpr.Position(), "expected type `%s` in assignment but got type `%s`.", place.Type(), rightExpr.Type())
 		return nil, false
@@ -1068,6 +1089,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 			badParam = true
 			continue
 		}
+		resolveNullptr(hirExpr, fncNode.Parameters[i].Type)
 		if hirExpr.Type() != fncNode.Parameters[i].Type {
 			a.appendDiagnostic(p.Position(), "argument %d (`%s`): expected `%s`, got `%s`", i+1, fncNode.Parameters[i].Name, fncNode.Parameters[i].Type, hirExpr.Type())
 			badParam = true
@@ -1502,7 +1524,7 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 func isConstantInitializer(expr hir.Expr) bool {
 	switch expr := expr.(type) {
 	case *hir.IntegerLiteral, *hir.FloatLiteral,
-		*hir.BooleanLiteral, *hir.StringLiteral, *hir.Sizeof:
+		*hir.BooleanLiteral, *hir.StringLiteral, *hir.Sizeof, *hir.NullPointer:
 		return true
 	case *hir.Cast:
 		return isConstantInitializer(expr.Value)

@@ -382,6 +382,12 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 			value = 1
 		}
 		return llvmapi.ConstInt(e.context.Int1Type(), value, false), nil
+	case *hir.NullPointer:
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return llvmapi.ConstPointerNull(t), nil
 	case *hir.FloatLiteral:
 		return llvmapi.ConstFloat(e.context.FloatType(), float64(expr.Value)), nil
 	case *hir.StringLiteral:

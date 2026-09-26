@@ -77,6 +77,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.prefixParseFns[lexer.AMPERSAND] = p.parseReference
 	p.prefixParseFns[lexer.ASTERISK] = p.parseDereference
 	p.prefixParseFns[lexer.TRUE] = p.parseBoolean
+	p.prefixParseFns[lexer.NULLPTR] = p.parseNullptr
 	p.prefixParseFns[lexer.FALSE] = p.parseBoolean
 	p.prefixParseFns[lexer.NOT] = p.parsePrefixExpression
 	p.prefixParseFns[lexer.SIZEOF] = p.parseSizeofExpression

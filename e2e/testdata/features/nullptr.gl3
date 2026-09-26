@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":1}
+// Comparing with nullptr needs ==, so that is the one other feature used here.
+fnc main() -> bool {
+    def int32* pointer = nullptr
+    return pointer == nullptr
+}

@@ -31,6 +31,8 @@ func (t Type) String() string {
 		name = "none"
 	case Float:
 		name = "float"
+	case Null:
+		name = "nullptr"
 	case StructType:
 		name = "struct#" + strconv.FormatUint(uint64(t.Struct), 10)
 	default:

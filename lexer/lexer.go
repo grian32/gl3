@@ -345,6 +345,8 @@ func identLookup(lit string) (TokenType, BaseVarType) {
 		return EXTERN, None
 	case "private":
 		return PRIVATE, None
+	case "nullptr":
+		return NULLPTR, None
 	}
 
 	return IDENTIFIER, None

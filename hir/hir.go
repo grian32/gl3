@@ -16,6 +16,8 @@ const (
 	Void
 	Float
 	StructType
+	// Null is the type of a nullptr not yet given a pointer type by its context.
+	Null
 )
 
 type Type struct {
@@ -115,6 +117,12 @@ type BooleanLiteral struct {
 }
 
 func (*BooleanLiteral) exprNode() {}
+
+type NullPointer struct {
+	ExprInfo
+}
+
+func (*NullPointer) exprNode() {}
 
 type FloatLiteral struct {
 	ExprInfo

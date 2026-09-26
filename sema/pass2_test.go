@@ -25,6 +25,7 @@ var pass2ExpressionTests = []struct {
 	{name: "boolean literal", source: `fnc sample() -> bool { return true }`, want: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}},
 	{name: "float literal", source: `fnc sample() -> float { return 1.5 }`, want: &ast.FloatLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, Value: 1.5}},
 	{name: "character literal", source: `fnc sample() -> int8 { return 'A' }`, want: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int8}}, Value: 65}},
+	{name: "nullptr takes return type", source: `fnc sample() -> int32* { return nullptr }`, want: &ast.NullPointer{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}}},
 	{name: "string literal", source: `fnc sample() -> char* { return "hello" }`, want: &ast.StringLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int8, Pointer: 1}}, Value: "hello\x00"}},
 	{name: "IntNegate", source: `fnc sample(int32 x) -> int32 { return -x }`, want: &ast.Unary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Op: ast.IntNegate, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}},
 	{name: "FloatNegate", source: `fnc sample(float x) -> float { return -x }`, want: &ast.Unary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, Op: ast.FloatNegate, Value: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, ID: 0}}},
@@ -161,6 +162,9 @@ var pass2DiagnosticTests = []struct {
 	name, source string
 	diagnostics  []expectedDiagnostic
 }{
+	{name: "nullptr to non-pointer", source: `fnc sample() -> int32 { return nullptr }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"nullptr", "int32"}, line: 1}}},
+	{name: "nullptr compared to nullptr", source: `fnc sample() -> bool { return nullptr == nullptr }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"nullptr"}, line: 1}}},
+	{name: "bare nullptr statement", source: `fnc sample() -> none { nullptr }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"nullptr", "pointer type"}, line: 1}}},
 	{name: "bare return in value function", source: `fnc sample() -> int32 { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},
 	{name: "bare return in pointer function", source: `fnc sample() -> int32* { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},
 	{name: "bare return in none pointer function", source: `fnc sample() -> none* { return }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"return", "expression", "none"}, line: 1}}},

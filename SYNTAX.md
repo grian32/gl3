@@ -156,6 +156,17 @@ true
 false
 ```
 
+### Null Pointer Literal
+
+`nullptr` is a null pointer of whatever pointer type its context expects: a declaration, assignment, argument, return value, struct or array element, or the other side of `==`/`!=`.
+
+```gl3
+def Node* next = nullptr
+if pointer == nullptr { return }
+```
+
+Where there is no pointer type to take (for example `def int32 x = nullptr`, or `nullptr == nullptr`), it is an error.
+
 ### Array Literals
 
 Array literals are syntactic sugar that expand to dynamic array operations.

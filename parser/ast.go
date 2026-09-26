@@ -372,6 +372,17 @@ func (de *DereferenceExpression) Position() *util.Position {
 	}
 }
 
+type NullptrLiteral struct {
+	Token lexer.Token
+}
+
+func (nl *NullptrLiteral) expressionNode()      { /* noop */ }
+func (nl *NullptrLiteral) TokenLiteral() string { return nl.Token.Literal }
+func (nl *NullptrLiteral) String() string       { return "nullptr" }
+func (nl *NullptrLiteral) Position() *util.Position {
+	return &nl.Token.Position
+}
+
 type BooleanExpression struct {
 	Token lexer.Token
 	Value bool

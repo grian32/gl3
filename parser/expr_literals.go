@@ -93,6 +93,12 @@ func (p *Parser) parseCharLiteral() Expression {
 	return expr
 }
 
+func (p *Parser) parseNullptr() Expression {
+	expr := &NullptrLiteral{Token: p.currToken}
+	p.NextToken()
+	return expr
+}
+
 func (p *Parser) parseBoolean() Expression {
 	expr := &BooleanExpression{Token: p.currToken}
 

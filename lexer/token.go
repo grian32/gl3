@@ -59,6 +59,7 @@ const (
 	CONST
 	EXTERN
 	PRIVATE
+	NULLPTR
 	EOF
 )
 
@@ -154,6 +155,8 @@ func (tt TokenType) String() string {
 		return "."
 	case COLON:
 		return ":"
+	case NULLPTR:
+		return "NULLPTR"
 	default:
 		return "UNKNOWN"
 	}
