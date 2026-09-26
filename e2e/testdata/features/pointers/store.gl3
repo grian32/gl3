@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":7}
+fnc main() -> int32 {
+    def int32 value = 1i32
+    def int32* pointer = &value;
+    *pointer = 7i32
+    return value
+}

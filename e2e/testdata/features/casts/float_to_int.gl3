@@ -1,0 +1,5 @@
+// e2e: {"mode":"run","exit":2}
+fnc main() -> int32 {
+    def float real = 2.75
+    return real as int32
+}

@@ -1,0 +1,5 @@
+// e2e: {"mode":"run","exit":214}
+fnc main() -> int32 {
+    def int32 value = 42i32
+    return -value
+}

@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":42}
+fnc main() -> int32 { return 50i32 - 8i32 }

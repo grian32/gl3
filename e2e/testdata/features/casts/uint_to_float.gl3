@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":200}
+extern fnc abs(int32 value) -> int32
+fnc main() -> int32 {
+    def uint8 byte = 200u8
+    return abs((byte as float) as int32)
+}

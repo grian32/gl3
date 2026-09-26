@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":1}
+fnc main() -> bool { return 1i32 != 2i32 }

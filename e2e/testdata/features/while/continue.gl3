@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":1}
+fnc main() -> bool {
+    def bool first = true
+    def bool skipped = true
+    while first {
+        first = false
+        continue;
+        skipped = false
+    }
+    return skipped
+}

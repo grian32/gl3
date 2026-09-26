@@ -1,0 +1,5 @@
+// e2e: {"mode":"run","exit":30}
+fnc main() -> int32 {
+    def int32* values = [int32; 10i32, 20i32, 30i32]
+    return values[2]
+}

@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":42}
+global int32 counter = 1i32
+fnc set() -> none { counter = 42i32 }
+fnc main() -> int32 {
+    set()
+    return counter
+}

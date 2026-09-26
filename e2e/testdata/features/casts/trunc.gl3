@@ -1,0 +1,5 @@
+// e2e: {"mode":"run","exit":44}
+fnc main() -> uint8 {
+    def int wide = 300
+    return wide as uint8
+}

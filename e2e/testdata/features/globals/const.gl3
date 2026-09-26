@@ -1,0 +1,3 @@
+// e2e: {"mode":"run","exit":42}
+global const int32 answer = 42i32
+fnc main() -> int32 { return answer }

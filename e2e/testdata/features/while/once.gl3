@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":7}
+fnc main() -> int32 {
+    while false { return 1i32 }
+    def int32 result = 0i32
+    def bool again = true
+    while again {
+        again = false
+        result = 7i32
+    }
+    return result
+}

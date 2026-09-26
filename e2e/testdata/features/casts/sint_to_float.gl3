@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":7}
+extern fnc abs(int32 value) -> int32
+fnc main() -> int32 {
+    def int8 small = -7i8
+    return abs((small as float) as int32)
+}

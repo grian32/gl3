@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":42}
+fnc main() -> uint { return ((4138 as int32*) as none*) as uint }

@@ -1,0 +1,28 @@
+// e2e: {"mode":"run","exit":42}
+// A global struct tracks the heaviest item from an array of structs; the
+// winner is identified by pointer equality against the array slot.
+struct Item { int32 id int32 weight }
+struct Best { int32 id int32 weight }
+global Best best = Best:{0i32, 0i32}
+global const int32 count = 4i32
+fnc heaviest(Item* items) -> Item* {
+    def Item* found = items
+    def int32 i = 0i32
+    while i < count {
+        if items[i].weight > best.weight {
+            best = Best:{items[i].id, items[i].weight}
+            found = items + i
+        }
+        i = i + 1i32
+    }
+    return found
+}
+fnc main() -> int32 {
+    def Item* items = [Item; Item:{1i32, 5i32}, Item:{2i32, 30i32}, Item:{3i32, 12i32}, Item:{4i32, 7i32}]
+    def Item* found = heaviest(items)
+    if found != items + 1i32 { return 1i32 }
+    if found == items { return 2i32 }
+    if best.id != 2i32 { return 3i32 }
+    best.weight = best.weight + 12i32
+    return best.weight
+}

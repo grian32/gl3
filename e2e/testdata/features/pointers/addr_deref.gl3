@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":42}
+fnc main() -> int32 {
+    def int32 value = 42i32
+    def int32* pointer = &value;
+    return *&*pointer
+}
