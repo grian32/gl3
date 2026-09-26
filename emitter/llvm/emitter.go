@@ -114,11 +114,7 @@ func (e *Emitter) Emit() error {
 	}
 
 	for _, f := range e.program.Functions {
-		e.declareFunction(&f)
-	}
-
-	for _, g := range e.program.Globals {
-		err := e.declareGlobal(&g)
+		err := e.declareFunction(&f)
 		if err != nil {
 			return err
 		}
@@ -130,6 +126,13 @@ func (e *Emitter) Emit() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	for _, g := range e.program.Globals {
+		err := e.declareGlobal(&g)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -187,7 +190,19 @@ func (e *Emitter) declareGlobal(global *hir.Global) error {
 	if err != nil {
 		return err
 	}
-	e.globals[global.Id] = llvmapi.AddGlobal(e.module, lowered, global.Name)
+	g := llvmapi.AddGlobal(e.module, lowered, global.Name)
+	g.SetGlobalConstant(global.Constant)
+
+	if global.Initializer != nil {
+		init, err := e.emitExpr(global.Initializer)
+		if err != nil {
+			return err
+		}
+		g.SetInitializer(init)
+	}
+
+	e.globals[global.Id] = g
+
 	return nil
 }
 
@@ -275,6 +290,11 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		return e.builder.CreateLoad(t, e.locals[expr.ID], ""), nil
 	case *hir.GlobalRef:
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateLoad(t, e.globals[expr.ID], ""), nil
 	case *hir.IntegerLiteral:
 		typ, err := e.lowerType(expr.Type())
 		if err != nil {
@@ -352,6 +372,7 @@ func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
 	case *hir.LocalPlace:
 		return e.locals[place.ID], nil
 	case *hir.GlobalPlace:
+		return e.globals[place.ID], nil
 	case *hir.DerefPlace:
 		return e.emitExpr(place.Pointer)
 	case *hir.FieldPlace:
