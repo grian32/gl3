@@ -29,6 +29,16 @@ func (p *Parser) parseIfStatement() Statement {
 		return stmt
 	}
 	p.NextToken()
+	// else if is sugar for an else block holding a single if.
+	if p.currTokenIs(lexer.IF) {
+		elseIf, ok := p.parseIfStatement().(*IfStatement)
+		if !ok {
+			return nil
+		}
+		stmt.Fail = &BlockStatement{Token: elseIf.Token, Statements: []Statement{elseIf}}
+		stmt.position.CopyEnd(elseIf.Position())
+		return stmt
+	}
 	if !p.expectCurr(lexer.LBRACE) {
 		return nil
 	}

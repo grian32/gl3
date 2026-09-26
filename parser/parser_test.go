@@ -378,6 +378,14 @@ func TestIfStatement(t *testing.T) {
 			"if x < 1 { \n return 0 \n } else { \n return 1 \n }",
 			"if (x < 1(Int)) { return 0(Int) } else { return 1(Int) };",
 		},
+		"else if": {
+			"if x < 1 { \n return 0 \n } else if x < 2 { \n return 1 \n }",
+			"if (x < 1(Int)) { return 0(Int) } else { if (x < 2(Int)) { return 1(Int) } };",
+		},
+		"else if chain with else": {
+			"if a { \n return 0 \n } else if b { \n return 1 \n } else if c { \n return 2 \n } else { \n return 3 \n }",
+			"if a { return 0(Int) } else { if b { return 1(Int) } else { if c { return 2(Int) } else { return 3(Int) } } };",
+		},
 		"nested if": {
 			"if true { \n if false { \n \n } \n }",
 			"if true { if false {  } };",

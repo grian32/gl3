@@ -290,7 +290,17 @@ if condition {
 } else {
     // executed when false
 }
+
+if first {
+    // executed when first is true
+} else if second {
+    // executed when first is false and second is true
+} else {
+    // executed when both are false
+}
 ```
+
+`else if` is shorthand for an `else` block containing a single `if`.
 
 ### While Loops
 

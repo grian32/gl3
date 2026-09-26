@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","exit":42}
+// The middle branch is taken, so the chain must stop there.
+fnc main() -> int32 {
+    def int32 result = 0i32
+    def bool first = false
+    def bool second = true
+    if first { result = 1i32 } else if second { result = 42i32 } else if true { result = 2i32 } else { result = 3i32 }
+    return result
+}
