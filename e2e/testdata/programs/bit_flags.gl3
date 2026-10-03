@@ -1,0 +1,30 @@
+// e2e: {"mode":"run","exit":25}
+// Bitwise operators bind tighter than comparisons, so `flags & mask == mask`
+// tests the mask instead of parsing as C's `flags & (mask == mask)`.
+global uint32 READ = 1u32
+global uint32 WRITE = 2u32
+global uint32 EXEC = 4u32
+
+fnc has(uint32 flags, uint32 mask) -> bool {
+    return flags & mask == mask
+}
+
+fnc popcount(uint32 x) -> int32 {
+    def int32 count = 0i32
+    while x != 0u32 {
+        count = count + ((x & 1u32) as int32)
+        x = x >> 1
+    }
+    return count
+}
+
+fnc main() -> int32 {
+    def uint32 flags = READ | EXEC
+    def int32 result = 0i32
+    if has(flags, READ) { result = result + 1i32 }
+    if has(flags, WRITE) { result = result + 100i32 }
+    if has(flags, READ | EXEC) { result = result + 10i32 }
+    flags = flags ^ READ
+    if !has(flags, READ) { result = result + 10i32 }
+    return result + popcount(~0u32 >> 31) - 1i32 + popcount(0xF0u32)
+}

@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":48}
+fnc main() -> int32 { return 0xF0i32 & 0x3Ci32 }

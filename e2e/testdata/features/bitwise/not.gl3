@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":5}
+fnc main() -> uint8 { return ~250u8 }

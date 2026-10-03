@@ -1,0 +1,2 @@
+// e2e: {"mode":"run","exit":40}
+fnc main() -> int32 { return 5i32 << 3i32 }
