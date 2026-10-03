@@ -590,6 +590,12 @@ func TestExpressionAssociativityAndPostfix(t *testing.T) {
 		{"a & &b", "&(a, ref(b))"},
 		{"~a & b", "&(prefix(~, a), b)"},
 		{"a = b = c", "assign(a, assign(b, c))"},
+		{"a += b + c", "+=(a, +(b, c))"},
+		{"a <<= b << c", "<<=(a, <<(b, c))"},
+		{"a &= b & c == d", "&=(a, ==(&(b, c), d))"},
+		{"a = b += c", "assign(a, +=(b, c))"},
+		{"a -= b = c", "-=(a, assign(b, c))"},
+		{"a[f()] %= b", "%=(deref(+(a, call(f))), b)"},
 		{"a || b && c", "||(a, &&(b, c))"},
 		{"a && b || c", "||(&&(a, b), c)"},
 		{"-f(a)[i]", "prefix(-, deref(+(call(f, a), i)))"},
@@ -616,6 +622,26 @@ func TestAssignmentExpression(t *testing.T) {
 		"array index assign": {
 			"items[i] = 2u16",
 			"*(items + i) = 2(Uint16);",
+		},
+		"plus assign": {
+			"x += 1i32",
+			"x += 1(Int32);",
+		},
+		"shift right assign": {
+			"x >>= 2",
+			"x >>= 2(Int);",
+		},
+		"deref compound assign": {
+			"*ptr *= 3i8",
+			"*ptr *= 3(Int8);",
+		},
+		"dot compound assign": {
+			"player.health -= 5",
+			"(player . health) -= 5(Int);",
+		},
+		"array index compound assign": {
+			"items[i] |= 2u16",
+			"*(items + i) |= 2(Uint16);",
 		},
 	}
 
@@ -1087,6 +1113,8 @@ func TestMalformedParserInput(t *testing.T) {
 		"literal assignment target":   {"1 = x", "lhs of assignment"},
 		"sum assignment target":       {"(a + b) = x", "lhs of assignment"},
 		"call assignment target":      {"f() = x", "lhs of assignment"},
+		"call compound target":        {"f() += x", "lhs of assignment"},
+		"literal compound target":     {"1 <<= x", "lhs of assignment"},
 		"unknown integer suffix":      {"1u128", ""},
 		"misspelled integer suffix":   {"1i33", ""},
 		"unsuffixed overflow":         {"18446744073709551616", `could not parse "18446744073709551616" as integer`},
@@ -1307,6 +1335,9 @@ func expressionShape(t *testing.T, expr Expression) string {
 		}
 		return "ref(" + shape(e.Var) + ")"
 	case *AssignmentExpression:
+		if e.Operator != "" {
+			return fmt.Sprintf("%s=(%s, %s)", e.Operator, shape(e.Left), shape(e.Right))
+		}
 		return fmt.Sprintf("assign(%s, %s)", shape(e.Left), shape(e.Right))
 	case *CallExpression:
 		parts := []string{shape(e.Function)}

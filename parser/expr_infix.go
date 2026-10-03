@@ -3,6 +3,7 @@ package parser
 import (
 	"gl3/lexer"
 	"gl3/util"
+	"strings"
 )
 
 func (p *Parser) parseInfixExpression(left Expression) Expression {
@@ -41,6 +42,9 @@ func (p *Parser) parseCastExpression(left Expression) Expression {
 
 func (p *Parser) parseAssignExpression(left Expression) Expression {
 	expr := &AssignmentExpression{Token: p.currToken}
+	if p.currToken.Type != lexer.ASSIGN {
+		expr.Operator = strings.TrimSuffix(p.currToken.Literal, "=")
+	}
 	switch left.(type) {
 	case *IdentifierExpression, *DereferenceExpression:
 		expr.Left = left

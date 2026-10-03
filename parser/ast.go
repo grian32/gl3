@@ -185,14 +185,17 @@ func (ds *DefStatement) Position() *util.Position {
 
 type AssignmentExpression struct {
 	Token lexer.Token
-	Left  Expression
-	Right Expression
+	// Operator is the binary operator of a compound assignment ("+" for +=),
+	// or "" for a plain =.
+	Operator string
+	Left     Expression
+	Right    Expression
 }
 
 func (ae *AssignmentExpression) expressionNode()      { /* noop */ }
 func (ae *AssignmentExpression) TokenLiteral() string { return ae.Token.Literal }
 func (ae *AssignmentExpression) String() string {
-	return ae.Left.String() + " = " + ae.Right.String()
+	return ae.Left.String() + " " + ae.Operator + "= " + ae.Right.String()
 }
 func (ae *AssignmentExpression) Position() *util.Position {
 	leftPos := ae.Left.Position()

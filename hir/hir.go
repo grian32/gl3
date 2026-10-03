@@ -310,6 +310,17 @@ type Assignment struct {
 
 func (*Assignment) exprNode() {}
 
+// CompoundAssignment is `Target Op= Value`. Target is evaluated once: its
+// address is loaded from, combined with Value by Op, and stored back to.
+type CompoundAssignment struct {
+	ExprInfo
+	Target Place
+	Op     BinaryOp
+	Value  Expr
+}
+
+func (*CompoundAssignment) exprNode() {}
+
 type AddressOf struct {
 	ExprInfo
 	Target Place

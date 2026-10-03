@@ -299,6 +299,7 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 	{name: "shift float", source: `fnc sample(float a) -> float { return a << 1 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "<<", "float"}, line: 1}}},
 	{name: "shift by bool", source: `fnc sample(int a, bool b) -> int { return a >> b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", ">>", "bool"}, line: 1}}},
 	{name: "bitwise not bool", source: `fnc sample(bool a) -> bool { return ~a }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported prefix op", "~", "bool"}, line: 1}}},
+	{name: "compound assignment unsupported", source: `fnc sample(int32 x) -> int32 { x += 1i32 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"compound assignment", "+="}, line: 1}}},
 	{name: "logical integer", source: `fnc sample() -> int32 {
  def bool x = 1i32 && 2i32 return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "&&", "int32"}, line: 2}}},

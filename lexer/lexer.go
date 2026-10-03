@@ -42,11 +42,6 @@ func (l *Lexer) peekChar() byte {
 }
 
 var singleCharToken = map[byte]TokenType{
-	'+': PLUS,
-	'*': ASTERISK,
-	'/': SLASH,
-	'%': PERCENT,
-	'^': CARET,
 	'~': TILDE,
 	';': SEMICOLON,
 	'(': LPAREN,
@@ -92,27 +87,55 @@ func (l *Lexer) NextToken() Token {
 	}
 
 	switch l.ch {
+	case '+':
+		tok = l.operatorToken(PLUS)
+		l.extendToken(&tok, '=', PLUS_ASSIGN)
+	case '*':
+		tok = l.operatorToken(ASTERISK)
+		l.extendToken(&tok, '=', ASTERISK_ASSIGN)
+	case '/':
+		tok = l.operatorToken(SLASH)
+		l.extendToken(&tok, '=', SLASH_ASSIGN)
+	case '%':
+		tok = l.operatorToken(PERCENT)
+		l.extendToken(&tok, '=', PERCENT_ASSIGN)
+	case '^':
+		tok = l.operatorToken(CARET)
+		l.extendToken(&tok, '=', CARET_ASSIGN)
 	case '-':
-		tok = l.doubleCharToken('>', MINUS, ARROW)
+		tok = l.operatorToken(MINUS)
+		if !l.extendToken(&tok, '>', ARROW) {
+			l.extendToken(&tok, '=', MINUS_ASSIGN)
+		}
 	case '&':
-		tok = l.doubleCharToken('&', AMPERSAND, LAND)
+		tok = l.operatorToken(AMPERSAND)
+		if !l.extendToken(&tok, '&', LAND) {
+			l.extendToken(&tok, '=', AMPERSAND_ASSIGN)
+		}
 	case '|':
-		tok = l.doubleCharToken('|', PIPE, LOR)
+		tok = l.operatorToken(PIPE)
+		if !l.extendToken(&tok, '|', LOR) {
+			l.extendToken(&tok, '=', PIPE_ASSIGN)
+		}
 	case '=':
-		tok = l.doubleCharToken('=', ASSIGN, EQ)
+		tok = l.operatorToken(ASSIGN)
+		l.extendToken(&tok, '=', EQ)
 	case '!':
-		tok = l.doubleCharToken('=', NOT, NOTEQ)
+		tok = l.operatorToken(NOT)
+		l.extendToken(&tok, '=', NOTEQ)
 	case '<':
-		if l.peekChar() == '<' {
-			tok = l.doubleCharToken('<', LT, SHL)
+		tok = l.operatorToken(LT)
+		if l.extendToken(&tok, '<', SHL) {
+			l.extendToken(&tok, '=', SHL_ASSIGN)
 		} else {
-			tok = l.doubleCharToken('=', LT, LTEQ)
+			l.extendToken(&tok, '=', LTEQ)
 		}
 	case '>':
-		if l.peekChar() == '>' {
-			tok = l.doubleCharToken('>', GT, SHR)
+		tok = l.operatorToken(GT)
+		if l.extendToken(&tok, '>', SHR) {
+			l.extendToken(&tok, '=', SHR_ASSIGN)
 		} else {
-			tok = l.doubleCharToken('=', GT, GTEQ)
+			l.extendToken(&tok, '=', GTEQ)
 		}
 	case 0:
 		tok.Literal = ""
@@ -270,28 +293,21 @@ func newToken(tt TokenType, ch byte, currLine, currCh uint32) Token {
 	}}
 }
 
-func (l *Lexer) doubleCharToken(char2 byte, tt TokenType, tt2 TokenType) Token {
-	var tok Token
+func (l *Lexer) operatorToken(tt TokenType) Token {
+	return newToken(tt, l.ch, l.currLine, l.currCh)
+}
 
-	if l.peekChar() == char2 {
-		l.readChar()
-		tok.Position = util.Position{
-			StartLine: l.currLine,
-			StartCol:  l.currCh,
-			EndCol:    l.currLine,
-		}
-		l.readChar()
-		tok.Type = tt2
-		tok.Literal = l.input[l.pos-2 : l.pos]
-		tok.Position.EndCol = l.currCh
-		return tok
+// extendToken grows tok by one character when the next character is next,
+// leaving l.ch on the token's last character for NextToken's final readChar.
+func (l *Lexer) extendToken(tok *Token, next byte, tt TokenType) bool {
+	if l.peekChar() != next {
+		return false
 	}
-
-	if tt != UNKNOWN {
-		tok = newToken(tt, l.ch, l.currLine, l.currCh)
-	}
-
-	return tok
+	l.readChar()
+	tok.Type = tt
+	tok.Literal += string(next)
+	tok.Position.EndCol = l.currCh
+	return true
 }
 
 func identLookup(lit string) (TokenType, BaseVarType) {

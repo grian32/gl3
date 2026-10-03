@@ -1003,6 +1003,10 @@ func makeBinaryNode(op hir.BinaryOp, left, right hir.Expr, resultType hir.Type) 
 }
 
 func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hir.Assignment, bool) {
+	if assignExpr.Operator != "" {
+		a.appendDiagnostic(assignExpr.Position(), "compound assignment `%s=` is not supported yet", assignExpr.Operator)
+		return nil, false
+	}
 	place, ok := a.checkPlace(assignExpr.Left)
 	if !ok {
 		return nil, false

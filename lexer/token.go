@@ -21,6 +21,16 @@ const (
 	TILDE
 	SHL
 	SHR
+	PLUS_ASSIGN
+	MINUS_ASSIGN
+	ASTERISK_ASSIGN
+	SLASH_ASSIGN
+	PERCENT_ASSIGN
+	AMPERSAND_ASSIGN
+	PIPE_ASSIGN
+	CARET_ASSIGN
+	SHL_ASSIGN
+	SHR_ASSIGN
 	SEMICOLON
 	ASSIGN
 	IDENTIFIER
@@ -89,6 +99,26 @@ func (tt TokenType) String() string {
 		return "<<"
 	case SHR:
 		return ">>"
+	case PLUS_ASSIGN:
+		return "+="
+	case MINUS_ASSIGN:
+		return "-="
+	case ASTERISK_ASSIGN:
+		return "*="
+	case SLASH_ASSIGN:
+		return "/="
+	case PERCENT_ASSIGN:
+		return "%="
+	case AMPERSAND_ASSIGN:
+		return "&="
+	case PIPE_ASSIGN:
+		return "|="
+	case CARET_ASSIGN:
+		return "^="
+	case SHL_ASSIGN:
+		return "<<="
+	case SHR_ASSIGN:
+		return ">>="
 	case ASTERISK:
 		return "*"
 	case MINUS:

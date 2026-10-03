@@ -26,31 +26,41 @@ const (
 )
 
 var precedences = map[lexer.TokenType]byte{
-	lexer.PLUS:      SUM,
-	lexer.MINUS:     SUM,
-	lexer.ASTERISK:  PRODUCT,
-	lexer.SLASH:     PRODUCT,
-	lexer.PERCENT:   PRODUCT,
-	lexer.PIPE:      BOR,
-	lexer.CARET:     BXOR,
-	lexer.AMPERSAND: BAND,
-	lexer.SHL:       SHIFT,
-	lexer.SHR:       SHIFT,
-	lexer.LPAREN:    CALL,
-	lexer.DOT:       CALL, // same semantic as c
-	lexer.COLON:     CALL, // same semantic as c
-	lexer.ASSIGN:    ASSIGN,
-	lexer.NOT:       PREFIX,
-	lexer.LOR:       LOR,
-	lexer.LAND:      LAND,
-	lexer.EQ:        EQUALS,
-	lexer.NOTEQ:     EQUALS,
-	lexer.GT:        LESSGREATER,
-	lexer.LT:        LESSGREATER,
-	lexer.GTEQ:      LESSGREATER,
-	lexer.LTEQ:      LESSGREATER,
-	lexer.LBRACKET:  INDEX,
-	lexer.AS:        CAST,
+	lexer.PLUS:             SUM,
+	lexer.MINUS:            SUM,
+	lexer.ASTERISK:         PRODUCT,
+	lexer.SLASH:            PRODUCT,
+	lexer.PERCENT:          PRODUCT,
+	lexer.PIPE:             BOR,
+	lexer.CARET:            BXOR,
+	lexer.AMPERSAND:        BAND,
+	lexer.SHL:              SHIFT,
+	lexer.SHR:              SHIFT,
+	lexer.LPAREN:           CALL,
+	lexer.DOT:              CALL, // same semantic as c
+	lexer.COLON:            CALL, // same semantic as c
+	lexer.ASSIGN:           ASSIGN,
+	lexer.PLUS_ASSIGN:      ASSIGN,
+	lexer.MINUS_ASSIGN:     ASSIGN,
+	lexer.ASTERISK_ASSIGN:  ASSIGN,
+	lexer.SLASH_ASSIGN:     ASSIGN,
+	lexer.PERCENT_ASSIGN:   ASSIGN,
+	lexer.AMPERSAND_ASSIGN: ASSIGN,
+	lexer.PIPE_ASSIGN:      ASSIGN,
+	lexer.CARET_ASSIGN:     ASSIGN,
+	lexer.SHL_ASSIGN:       ASSIGN,
+	lexer.SHR_ASSIGN:       ASSIGN,
+	lexer.NOT:              PREFIX,
+	lexer.LOR:              LOR,
+	lexer.LAND:             LAND,
+	lexer.EQ:               EQUALS,
+	lexer.NOTEQ:            EQUALS,
+	lexer.GT:               LESSGREATER,
+	lexer.LT:               LESSGREATER,
+	lexer.GTEQ:             LESSGREATER,
+	lexer.LTEQ:             LESSGREATER,
+	lexer.LBRACKET:         INDEX,
+	lexer.AS:               CAST,
 }
 
 type (
@@ -117,6 +127,16 @@ func New(l *lexer.Lexer) *Parser {
 	p.infixParseFns[lexer.DOT] = p.parseInfixExpression
 	p.infixParseFns[lexer.LPAREN] = p.parseCallExpression
 	p.infixParseFns[lexer.ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.PLUS_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.MINUS_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.ASTERISK_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.SLASH_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.PERCENT_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.AMPERSAND_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.PIPE_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.CARET_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.SHL_ASSIGN] = p.parseAssignExpression
+	p.infixParseFns[lexer.SHR_ASSIGN] = p.parseAssignExpression
 	p.infixParseFns[lexer.AS] = p.parseCastExpression
 	p.infixParseFns[lexer.LBRACKET] = p.parseArrayIndexExpression
 	p.infixParseFns[lexer.COLON] = p.parseStructInitialization
