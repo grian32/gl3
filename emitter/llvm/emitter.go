@@ -534,7 +534,11 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 		return llvmapi.Value{}, err
 	}
 
-	switch expr.Op {
+	return e.emitBinaryOp(expr.Op, l, r, expr.Left.Type(), expr.Right.Type())
+}
+
+func (e *Emitter) emitBinaryOp(op hir.BinaryOp, l, r llvmapi.Value, leftType, rightType hir.Type) (llvmapi.Value, error) {
+	switch op {
 	case hir.IntAdd:
 		return e.builder.CreateAdd(l, r, ""), nil
 	case hir.IntSubtract:
@@ -559,7 +563,7 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 		// shifting by bit width or more is bad in llvm cuz poison s othe amount is maskd to width-1 as x86 does in hw
 		mask := llvmapi.ConstInt(r.Type(), uint64(r.Type().IntTypeWidth()-1), false)
 		r = e.builder.CreateAnd(r, mask, "")
-		switch expr.Op {
+		switch op {
 		case hir.ShiftLeft:
 			return e.builder.CreateShl(l, r, ""), nil
 		case hir.ArithmeticShiftRight:
@@ -609,7 +613,7 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 	case hir.FloatGreaterEqual:
 		return e.builder.CreateFCmp(llvmapi.FloatOGE, l, r, ""), nil
 	case hir.PointerAdd, hir.PointerSubtract:
-		elementType := expr.Left.Type()
+		elementType := leftType
 		elementType.Pointer--
 		element, err := e.lowerType(elementType)
 		if err != nil {
@@ -618,19 +622,19 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 		// GEP sign-extends narrow indices, so unsigned offsets are widened first.
 		offset := r
 		if r.Type().IntTypeWidth() < 64 {
-			switch expr.Right.Type().Base {
+			switch rightType.Base {
 			case hir.Uint32, hir.Uint16, hir.Uint8:
 				offset = e.builder.CreateZExt(r, e.context.Int64Type(), "")
 			default:
 				offset = e.builder.CreateSExt(r, e.context.Int64Type(), "")
 			}
 		}
-		if expr.Op == hir.PointerSubtract {
+		if op == hir.PointerSubtract {
 			offset = e.builder.CreateNeg(offset, "")
 		}
 		return e.builder.CreateGEP(element, l, []llvmapi.Value{offset}, ""), nil
 	default:
-		panic(fmt.Sprintf("unexpected hir.BinaryOp: %#v", expr.Op))
+		panic(fmt.Sprintf("unexpected hir.BinaryOp: %#v", op))
 	}
 }
 
