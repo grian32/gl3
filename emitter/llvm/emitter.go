@@ -451,7 +451,7 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 			return llvmapi.Value{}, err
 		}
 		switch expr.Op {
-		case hir.BoolNot:
+		case hir.BoolNot, hir.IntNot:
 			return e.builder.CreateNot(v, ""), nil
 		case hir.FloatNegate:
 			return e.builder.CreateFNeg(v, ""), nil
@@ -549,6 +549,24 @@ func (e *Emitter) emitBinary(expr *hir.Binary) (llvmapi.Value, error) {
 		return e.builder.CreateSRem(l, r, ""), nil
 	case hir.UnsignedRemainder:
 		return e.builder.CreateURem(l, r, ""), nil
+	case hir.IntAnd:
+		return e.builder.CreateAnd(l, r, ""), nil
+	case hir.IntOr:
+		return e.builder.CreateOr(l, r, ""), nil
+	case hir.IntXor:
+		return e.builder.CreateXor(l, r, ""), nil
+	case hir.ShiftLeft, hir.ArithmeticShiftRight, hir.LogicalShiftRight:
+		// shifting by bit width or more is bad in llvm cuz poison s othe amount is maskd to width-1 as x86 does in hw
+		mask := llvmapi.ConstInt(r.Type(), uint64(r.Type().IntTypeWidth()-1), false)
+		r = e.builder.CreateAnd(r, mask, "")
+		switch expr.Op {
+		case hir.ShiftLeft:
+			return e.builder.CreateShl(l, r, ""), nil
+		case hir.ArithmeticShiftRight:
+			return e.builder.CreateAShr(l, r, ""), nil
+		default:
+			return e.builder.CreateLShr(l, r, ""), nil
+		}
 	case hir.FloatAdd:
 		return e.builder.CreateFAdd(l, r, ""), nil
 	case hir.FloatSubtract:

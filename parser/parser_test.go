@@ -504,6 +504,26 @@ func TestInfixExpression(t *testing.T) {
 			"x >= 5i32",
 			"(x >= 5(Int32));",
 		},
+		"bitwise and": {
+			"x & 0xFFi32",
+			"(x & 255(Int32));",
+		},
+		"bitwise or": {
+			"x | y",
+			"(x | y);",
+		},
+		"bitwise xor": {
+			"x ^ y",
+			"(x ^ y);",
+		},
+		"shift left": {
+			"x << 2",
+			"(x << 2(Int));",
+		},
+		"shift right": {
+			"x >> 2",
+			"(x >> 2(Int));",
+		},
 		"dot": {
 			"player.health",
 			"(player . health);",
@@ -559,6 +579,16 @@ func TestExpressionAssociativityAndPostfix(t *testing.T) {
 		{"a / b * c", "*(/(a, b), c)"},
 		{"a + b % c", "+(a, %(b, c))"},
 		{"a % b * c", "*(%(a, b), c)"},
+		{"a & b == c", "==(&(a, b), c)"},
+		{"a | b < c", "<(|(a, b), c)"},
+		{"a | b ^ c & d", "|(a, ^(b, &(c, d)))"},
+		{"a & b | c ^ d", "|(&(a, b), ^(c, d))"},
+		{"a << b + c", "<<(a, +(b, c))"},
+		{"a & b << c", "&(a, <<(b, c))"},
+		{"a << b << c", "<<(<<(a, b), c)"},
+		{"a & b && c | d", "&&(&(a, b), |(c, d))"},
+		{"a & &b", "&(a, ref(b))"},
+		{"~a & b", "&(prefix(~, a), b)"},
 		{"a = b = c", "assign(a, assign(b, c))"},
 		{"a || b && c", "||(a, &&(b, c))"},
 		{"a && b || c", "||(&&(a, b), c)"},
@@ -626,6 +656,10 @@ func TestCastPrecedence(t *testing.T) {
 		{"a as int == b", "==(cast(Int, a), b)"},
 		{"a && b as bool", "&&(a, cast(Bool, b))"},
 		{"a as bool || b", "||(cast(Bool, a), b)"},
+		{"a & b as uint8", "cast(Uint8, &(a, b))"},
+		{"a as uint8 & b", "&(cast(Uint8, a), b)"},
+		{"a << b as int", "cast(Int, <<(a, b))"},
+		{"~a as int", "cast(Int, prefix(~, a))"},
 		{"-a as float", "cast(Float, prefix(-, a))"},
 		{"-(a as float)", "prefix(-, cast(Float, a))"},
 		{"!a as bool", "cast(Bool, prefix(!, a))"},
@@ -676,6 +710,10 @@ func TestPrefixExpression(t *testing.T) {
 		"neg infix": {
 			"-(x + 2i32)",
 			"(-(x + 2(Int32)));",
+		},
+		"bitwise not identifier": {
+			"~mask",
+			"(~mask);",
 		},
 	}
 

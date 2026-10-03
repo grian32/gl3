@@ -16,6 +16,11 @@ const (
 	ASTERISK
 	SLASH
 	PERCENT
+	PIPE
+	CARET
+	TILDE
+	SHL
+	SHR
 	SEMICOLON
 	ASSIGN
 	IDENTIFIER
@@ -74,6 +79,16 @@ func (tt TokenType) String() string {
 		return "/"
 	case PERCENT:
 		return "%"
+	case PIPE:
+		return "|"
+	case CARET:
+		return "^"
+	case TILDE:
+		return "~"
+	case SHL:
+		return "<<"
+	case SHR:
+		return ">>"
 	case ASTERISK:
 		return "*"
 	case MINUS:

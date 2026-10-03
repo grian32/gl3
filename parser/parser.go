@@ -14,6 +14,10 @@ const (
 	EQUALS      // ==
 	LESSGREATER // > or <
 	CAST
+	BOR     // |
+	BXOR    // ^
+	BAND    // &
+	SHIFT   // << or >>
 	SUM     // +
 	PRODUCT // *
 	PREFIX  // -X or !X
@@ -22,26 +26,31 @@ const (
 )
 
 var precedences = map[lexer.TokenType]byte{
-	lexer.PLUS:     SUM,
-	lexer.MINUS:    SUM,
-	lexer.ASTERISK: PRODUCT,
-	lexer.SLASH:    PRODUCT,
-	lexer.PERCENT:  PRODUCT,
-	lexer.LPAREN:   CALL,
-	lexer.DOT:      CALL, // same semantic as c
-	lexer.COLON:    CALL, // same semantic as c
-	lexer.ASSIGN:   ASSIGN,
-	lexer.NOT:      PREFIX,
-	lexer.LOR:      LOR,
-	lexer.LAND:     LAND,
-	lexer.EQ:       EQUALS,
-	lexer.NOTEQ:    EQUALS,
-	lexer.GT:       LESSGREATER,
-	lexer.LT:       LESSGREATER,
-	lexer.GTEQ:     LESSGREATER,
-	lexer.LTEQ:     LESSGREATER,
-	lexer.LBRACKET: INDEX,
-	lexer.AS:       CAST,
+	lexer.PLUS:      SUM,
+	lexer.MINUS:     SUM,
+	lexer.ASTERISK:  PRODUCT,
+	lexer.SLASH:     PRODUCT,
+	lexer.PERCENT:   PRODUCT,
+	lexer.PIPE:      BOR,
+	lexer.CARET:     BXOR,
+	lexer.AMPERSAND: BAND,
+	lexer.SHL:       SHIFT,
+	lexer.SHR:       SHIFT,
+	lexer.LPAREN:    CALL,
+	lexer.DOT:       CALL, // same semantic as c
+	lexer.COLON:     CALL, // same semantic as c
+	lexer.ASSIGN:    ASSIGN,
+	lexer.NOT:       PREFIX,
+	lexer.LOR:       LOR,
+	lexer.LAND:      LAND,
+	lexer.EQ:        EQUALS,
+	lexer.NOTEQ:     EQUALS,
+	lexer.GT:        LESSGREATER,
+	lexer.LT:        LESSGREATER,
+	lexer.GTEQ:      LESSGREATER,
+	lexer.LTEQ:      LESSGREATER,
+	lexer.LBRACKET:  INDEX,
+	lexer.AS:        CAST,
 }
 
 type (
@@ -81,6 +90,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.prefixParseFns[lexer.NULLPTR] = p.parseNullptr
 	p.prefixParseFns[lexer.FALSE] = p.parseBoolean
 	p.prefixParseFns[lexer.NOT] = p.parsePrefixExpression
+	p.prefixParseFns[lexer.TILDE] = p.parsePrefixExpression
 	p.prefixParseFns[lexer.SIZEOF] = p.parseSizeofExpression
 	p.prefixParseFns[lexer.LBRACKET] = p.parseArrayLiteral
 	p.prefixParseFns[lexer.CHAR] = p.parseCharLiteral
@@ -90,6 +100,11 @@ func New(l *lexer.Lexer) *Parser {
 	p.infixParseFns[lexer.MINUS] = p.parseInfixExpression
 	p.infixParseFns[lexer.SLASH] = p.parseInfixExpression
 	p.infixParseFns[lexer.PERCENT] = p.parseInfixExpression
+	p.infixParseFns[lexer.PIPE] = p.parseInfixExpression
+	p.infixParseFns[lexer.CARET] = p.parseInfixExpression
+	p.infixParseFns[lexer.AMPERSAND] = p.parseInfixExpression
+	p.infixParseFns[lexer.SHL] = p.parseInfixExpression
+	p.infixParseFns[lexer.SHR] = p.parseInfixExpression
 	p.infixParseFns[lexer.ASTERISK] = p.parseInfixExpression
 	p.infixParseFns[lexer.LAND] = p.parseInfixExpression
 	p.infixParseFns[lexer.LOR] = p.parseInfixExpression

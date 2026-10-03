@@ -46,6 +46,8 @@ var singleCharToken = map[byte]TokenType{
 	'*': ASTERISK,
 	'/': SLASH,
 	'%': PERCENT,
+	'^': CARET,
+	'~': TILDE,
 	';': SEMICOLON,
 	'(': LPAREN,
 	')': RPAREN,
@@ -95,15 +97,23 @@ func (l *Lexer) NextToken() Token {
 	case '&':
 		tok = l.doubleCharToken('&', AMPERSAND, LAND)
 	case '|':
-		tok = l.doubleCharToken('|', UNKNOWN, LOR)
+		tok = l.doubleCharToken('|', PIPE, LOR)
 	case '=':
 		tok = l.doubleCharToken('=', ASSIGN, EQ)
 	case '!':
 		tok = l.doubleCharToken('=', NOT, NOTEQ)
 	case '<':
-		tok = l.doubleCharToken('=', LT, LTEQ)
+		if l.peekChar() == '<' {
+			tok = l.doubleCharToken('<', LT, SHL)
+		} else {
+			tok = l.doubleCharToken('=', LT, LTEQ)
+		}
 	case '>':
-		tok = l.doubleCharToken('=', GT, GTEQ)
+		if l.peekChar() == '>' {
+			tok = l.doubleCharToken('>', GT, SHR)
+		} else {
+			tok = l.doubleCharToken('=', GT, GTEQ)
+		}
 	case 0:
 		tok.Literal = ""
 		tok.Type = EOF

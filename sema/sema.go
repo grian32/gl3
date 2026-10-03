@@ -712,6 +712,10 @@ func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
 			if t.Base == hir.Bool {
 				op = hir.BoolNot
 			}
+		case "~":
+			if bits, _ := castIntegerInfo(t); bits != 0 {
+				op = hir.IntNot
+			}
 		}
 	}
 	if op == hir.InvalidUnaryOp {
@@ -847,6 +851,10 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
 	}
 
+	if infixExpr.Operator == "<<" || infixExpr.Operator == ">>" {
+		return a.checkShift(infixExpr, leftExpr, rightExpr)
+	}
+
 	if leftExpr.Type() != rightExpr.Type() {
 		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different: left is `%s`, right is `%s`", leftExpr.Type(), rightExpr.Type())
 		return nil, false
@@ -879,6 +887,12 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 				op = hir.UnsignedRemainder
 			}
 			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+		case "&":
+			return makeBinaryNode(hir.IntAnd, leftExpr, rightExpr, leftExpr.Type()), true
+		case "|":
+			return makeBinaryNode(hir.IntOr, leftExpr, rightExpr, leftExpr.Type()), true
+		case "^":
+			return makeBinaryNode(hir.IntXor, leftExpr, rightExpr, leftExpr.Type()), true
 		case "==":
 			return makeBinaryNode(hir.IntEqual, leftExpr, rightExpr, boolType), true
 		case "!=":
@@ -946,6 +960,37 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 
 	a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on types `%s` and `%s`.", infixExpr.Operator, leftExpr.Type(), rightExpr.Type())
 	return nil, false
+}
+
+// checkShift accepts any integer shift amount and converts it to the left
+// operand's type, since LLVM shifts need both operands to match.
+func (a *Analyzer) checkShift(infixExpr *parser.InfixExpression, leftExpr, rightExpr hir.Expr) (hir.Expr, bool) {
+	valueBits, valueSigned := castIntegerInfo(leftExpr.Type())
+	amountBits, amountSigned := castIntegerInfo(rightExpr.Type())
+	if valueBits == 0 || amountBits == 0 {
+		a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on types `%s` and `%s`.", infixExpr.Operator, leftExpr.Type(), rightExpr.Type())
+		return nil, false
+	}
+
+	amount := rightExpr
+	if amountBits != valueBits {
+		kind := hir.ZeroExtend
+		if amountBits > valueBits {
+			kind = hir.Truncate
+		} else if amountSigned {
+			kind = hir.SignExtend
+		}
+		amount = &hir.Cast{ExprInfo: hir.ExprInfo{ResultType: leftExpr.Type()}, Kind: kind, Value: rightExpr}
+	}
+
+	op := hir.ShiftLeft
+	if infixExpr.Operator == ">>" {
+		op = hir.LogicalShiftRight
+		if valueSigned {
+			op = hir.ArithmeticShiftRight
+		}
+	}
+	return makeBinaryNode(op, leftExpr, amount, leftExpr.Type()), true
 }
 
 func makeBinaryNode(op hir.BinaryOp, left, right hir.Expr, resultType hir.Type) *hir.Binary {

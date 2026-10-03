@@ -233,6 +233,7 @@ struct_instance.field = value   // struct field assignment
 | -------- | ----------- | ------- |
 | `-`      | Negation    | `-x`    |
 | `!`      | Logical NOT | `!flag` |
+| `~`      | Bitwise NOT | `~mask` |
 | `&`      | Address-of  | `&x`    |
 | `*`      | Dereference | `*ptr`  |
 
@@ -245,6 +246,11 @@ struct_instance.field = value   // struct field assignment
 | `*`      | Multiplication        | `a * b`    |
 | `/`      | Division              | `a / b`    |
 | `%`      | Remainder (integers)  | `a % b`    |
+| `&`      | Bitwise AND           | `a & b`    |
+| `\|`     | Bitwise OR            | `a \| b`   |
+| `^`      | Bitwise XOR           | `a ^ b`    |
+| `<<`     | Shift left            | `a << b`   |
+| `>>`     | Shift right           | `a >> b`   |
 | `==`     | Equality              | `a == b`   |
 | `!=`     | Inequality            | `a != b`   |
 | `<`      | Less than             | `a < b`    |
@@ -262,11 +268,41 @@ struct_instance.field = value   // struct field assignment
 4. Equality (`==`, `!=`)
 5. Comparison (`<`, `>`, `<=`, `>=`)
 6. Cast (`as`)
-7. Addition/Subtraction (`+`, `-`)
-8. Multiplication/Division/Remainder (`*`, `/`, `%`)
-9. Prefix operators (`!`, `-`, `&`, `*`)
-10. Function call, member access, struct initialization
-11. Array indexing
+7. Bitwise OR (`|`)
+8. Bitwise XOR (`^`)
+9. Bitwise AND (`&`)
+10. Shift (`<<`, `>>`)
+11. Addition/Subtraction (`+`, `-`)
+12. Multiplication/Division/Remainder (`*`, `/`, `%`)
+13. Prefix operators (`!`, `-`, `~`, `&`, `*`)
+14. Function call, member access, struct initialization
+15. Array indexing
+
+All binary operators are left-associative except assignment, which is right-associative.
+
+### Bitwise Operators
+
+`&`, `|`, `^` and `~` work on integer types only. Both operands of `&`, `|` and `^` must have the same type.
+
+Unlike C, bitwise operators bind tighter than comparisons, so masks can be tested without parentheses:
+
+```gl3
+if flags & READ == READ { }   // (flags & READ) == READ
+```
+
+Shifts bind looser than `+`/`-`, as in C, so `1u32 << n - 1i32` shifts by `n - 1`.
+
+Shifts follow these rules:
+
+- The right-hand side may be any integer type; it is converted to the left operand's type. The result has the left operand's type.
+- `>>` is an arithmetic shift (fills with the sign bit) on signed types and a logical shift (fills with zeros) on unsigned types.
+- The shift amount is masked to the bit width minus one, so `x << 33i32` on an `int32` shifts by 1. Shifting never has undefined results.
+
+```gl3
+def uint32 bit = 1u32 << 5        // 32; the amount is an int
+def int32 half = -64i32 >> 1i32   // -32, sign preserved
+def uint32 top = 0x80000000u32 >> 31u32  // 1
+```
 
 ## Type Casting
 

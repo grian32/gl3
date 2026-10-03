@@ -149,6 +149,12 @@ const (
 	UnsignedDivide
 	SignedRemainder
 	UnsignedRemainder
+	IntAnd
+	IntOr
+	IntXor
+	ShiftLeft
+	ArithmeticShiftRight
+	LogicalShiftRight
 	FloatAdd
 	FloatSubtract
 	FloatMultiply
@@ -248,6 +254,7 @@ type UnaryOp uint8
 const (
 	InvalidUnaryOp UnaryOp = iota
 	IntNegate
+	IntNot
 	FloatNegate
 	BoolNot
 )
