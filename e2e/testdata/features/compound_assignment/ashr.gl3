@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":255}
+// Signed: -64 >> 26 is -1; a logical shift would give 63.
+fnc main() -> int32 {
+    def int32 x = -64i32
+    x >>= 26i32
+    return x
+}

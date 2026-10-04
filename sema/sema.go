@@ -789,8 +789,6 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 		}, true
 	}
 
-	boolType := hir.Type{Base: hir.Bool}
-
 	leftExpr, ok := a.checkExpr(infixExpr.Left)
 	if !ok {
 		return nil, false
@@ -799,29 +797,39 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 	if !ok {
 		return nil, false
 	}
-	// Either side of a comparison may be nullptr.
 	resolveNullptr(leftExpr, rightExpr.Type())
 	resolveNullptr(rightExpr, leftExpr.Type())
-	if leftExpr.Type().Pointer > 0 {
+	op, rightExpr, resultType, ok := a.binaryOp(infixExpr.Position(), infixExpr.Right.Position(), infixExpr.Operator, leftExpr.Type(), rightExpr)
+	if !ok {
+		return nil, false
+	}
+	return makeBinaryNode(op, leftExpr, rightExpr, resultType), true
+}
+
+// returns hir op, right expr, result type, success
+func (a *Analyzer) binaryOp(pos, rightPos *util.Position, operator string, leftType hir.Type, rightExpr hir.Expr) (hir.BinaryOp, hir.Expr, hir.Type, bool) {
+	boolType := hir.Type{Base: hir.Bool}
+
+	if leftType.Pointer > 0 {
 		// ptr eq ne
-		if infixExpr.Operator == "==" || infixExpr.Operator == "!=" {
-			if leftExpr.Type() != rightExpr.Type() {
-				a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different: left is `%s`, right is `%s`", leftExpr.Type(), rightExpr.Type())
-				return nil, false
+		if operator == "==" || operator == "!=" {
+			if leftType != rightExpr.Type() {
+				a.appendDiagnostic(pos, "types of operands cannot be different: left is `%s`, right is `%s`", leftType, rightExpr.Type())
+				return hir.InvalidBinaryOp, nil, hir.Type{}, false
 			}
 			op := hir.IntEqual
-			if infixExpr.Operator == "!=" {
+			if operator == "!=" {
 				op = hir.IntNotEqual
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+			return op, rightExpr, boolType, true
 		}
 
 		op := hir.PointerAdd
-		if infixExpr.Operator == "-" {
+		if operator == "-" {
 			op = hir.PointerSubtract
-		} else if infixExpr.Operator != "+" {
-			a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on pointer type `%s`", infixExpr.Operator, leftExpr.Type())
-			return nil, false
+		} else if operator != "+" {
+			a.appendDiagnostic(pos, "unsupported op `%s` on pointer type `%s`", operator, leftType)
+			return hir.InvalidBinaryOp, nil, hir.Type{}, false
 		}
 
 		offsetType := rightExpr.Type()
@@ -834,142 +842,141 @@ func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, b
 			}
 		}
 		if !integerOffset {
-			a.appendDiagnostic(infixExpr.Right.Position(), "pointer arithmetic requires an integer offset, got `%s`", offsetType)
-			return nil, false
+			a.appendDiagnostic(rightPos, "pointer arithmetic requires an integer offset, got `%s`", offsetType)
+			return hir.InvalidBinaryOp, nil, hir.Type{}, false
 		}
 
-		elementType := leftExpr.Type()
+		elementType := leftType
 		elementType.Pointer--
 		if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
 			if elementType.Base == hir.StructType && a.Structs[elementType.Struct].Opaque {
-				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.Structs[elementType.Struct].Name)
+				a.appendDiagnostic(pos, "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.Structs[elementType.Struct].Name)
 			} else {
-				a.appendDiagnostic(infixExpr.Position(), "pointer arithmetic requires a sized element type, got `%s`", elementType)
+				a.appendDiagnostic(pos, "pointer arithmetic requires a sized element type, got `%s`", elementType)
 			}
-			return nil, false
+			return hir.InvalidBinaryOp, nil, hir.Type{}, false
 		}
-		return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+		return op, rightExpr, leftType, true
 	}
 
-	if infixExpr.Operator == "<<" || infixExpr.Operator == ">>" {
-		return a.checkShift(infixExpr, leftExpr, rightExpr)
+	if operator == "<<" || operator == ">>" {
+		return a.checkShift(pos, operator, leftType, rightExpr)
 	}
 
-	if leftExpr.Type() != rightExpr.Type() {
-		a.appendDiagnostic(infixExpr.Position(), "types of operands cannot be different: left is `%s`, right is `%s`", leftExpr.Type(), rightExpr.Type())
-		return nil, false
+	if leftType != rightExpr.Type() {
+		a.appendDiagnostic(pos, "types of operands cannot be different: left is `%s`, right is `%s`", leftType, rightExpr.Type())
+		return hir.InvalidBinaryOp, nil, hir.Type{}, false
 	}
 
-	switch leftExpr.Type().Base {
+	switch leftType.Base {
 	case hir.Int, hir.Int32, hir.Int16, hir.Int8,
 		hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
 		unsigned := false
-		switch leftExpr.Type().Base {
+		switch leftType.Base {
 		case hir.Uint, hir.Uint32, hir.Uint16, hir.Uint8:
 			unsigned = true
 		}
-		switch infixExpr.Operator {
+		switch operator {
 		case "+":
-			return makeBinaryNode(hir.IntAdd, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntAdd, rightExpr, leftType, true
 		case "-":
-			return makeBinaryNode(hir.IntSubtract, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntSubtract, rightExpr, leftType, true
 		case "*":
-			return makeBinaryNode(hir.IntMultiply, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntMultiply, rightExpr, leftType, true
 		case "/":
 			op := hir.SignedDivide
 			if unsigned {
 				op = hir.UnsignedDivide
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+			return op, rightExpr, leftType, true
 		case "%":
 			op := hir.SignedRemainder
 			if unsigned {
 				op = hir.UnsignedRemainder
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, leftExpr.Type()), true
+			return op, rightExpr, leftType, true
 		case "&":
-			return makeBinaryNode(hir.IntAnd, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntAnd, rightExpr, leftType, true
 		case "|":
-			return makeBinaryNode(hir.IntOr, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntOr, rightExpr, leftType, true
 		case "^":
-			return makeBinaryNode(hir.IntXor, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.IntXor, rightExpr, leftType, true
 		case "==":
-			return makeBinaryNode(hir.IntEqual, leftExpr, rightExpr, boolType), true
+			return hir.IntEqual, rightExpr, boolType, true
 		case "!=":
-			return makeBinaryNode(hir.IntNotEqual, leftExpr, rightExpr, boolType), true
+			return hir.IntNotEqual, rightExpr, boolType, true
 		case "<":
 			op := hir.SignedLess
 			if unsigned {
 				op = hir.UnsignedLess
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+			return op, rightExpr, boolType, true
 		case "<=":
 			op := hir.SignedLessEqual
 			if unsigned {
 				op = hir.UnsignedLessEqual
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+			return op, rightExpr, boolType, true
 		case ">":
 			op := hir.SignedGreater
 			if unsigned {
 				op = hir.UnsignedGreater
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+			return op, rightExpr, boolType, true
 		case ">=":
 			op := hir.SignedGreaterEqual
 			if unsigned {
 				op = hir.UnsignedGreaterEqual
 			}
-			return makeBinaryNode(op, leftExpr, rightExpr, boolType), true
+			return op, rightExpr, boolType, true
 		}
 	case hir.Float:
-		switch infixExpr.Operator {
+		switch operator {
 		case "+":
-			return makeBinaryNode(hir.FloatAdd, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.FloatAdd, rightExpr, leftType, true
 		case "-":
-			return makeBinaryNode(hir.FloatSubtract, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.FloatSubtract, rightExpr, leftType, true
 		case "*":
-			return makeBinaryNode(hir.FloatMultiply, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.FloatMultiply, rightExpr, leftType, true
 		case "/":
-			return makeBinaryNode(hir.FloatDivide, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.FloatDivide, rightExpr, leftType, true
 		case "==":
-			return makeBinaryNode(hir.FloatEqual, leftExpr, rightExpr, boolType), true
+			return hir.FloatEqual, rightExpr, boolType, true
 		case "!=":
-			return makeBinaryNode(hir.FloatNotEqual, leftExpr, rightExpr, boolType), true
+			return hir.FloatNotEqual, rightExpr, boolType, true
 		case "<":
-			return makeBinaryNode(hir.FloatLess, leftExpr, rightExpr, boolType), true
+			return hir.FloatLess, rightExpr, boolType, true
 		case "<=":
-			return makeBinaryNode(hir.FloatLessEqual, leftExpr, rightExpr, boolType), true
+			return hir.FloatLessEqual, rightExpr, boolType, true
 		case ">":
-			return makeBinaryNode(hir.FloatGreater, leftExpr, rightExpr, boolType), true
+			return hir.FloatGreater, rightExpr, boolType, true
 		case ">=":
-			return makeBinaryNode(hir.FloatGreaterEqual, leftExpr, rightExpr, boolType), true
+			return hir.FloatGreaterEqual, rightExpr, boolType, true
 		}
 	case hir.Bool:
-		switch infixExpr.Operator {
+		switch operator {
 		case "&&":
-			return makeBinaryNode(hir.BoolAnd, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.BoolAnd, rightExpr, leftType, true
 		case "||":
-			return makeBinaryNode(hir.BoolOr, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.BoolOr, rightExpr, leftType, true
 		case "==":
-			return makeBinaryNode(hir.BoolEqual, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.BoolEqual, rightExpr, leftType, true
 		case "!=":
-			return makeBinaryNode(hir.BoolNotEqual, leftExpr, rightExpr, leftExpr.Type()), true
+			return hir.BoolNotEqual, rightExpr, leftType, true
 		}
 	}
 
-	a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on types `%s` and `%s`.", infixExpr.Operator, leftExpr.Type(), rightExpr.Type())
-	return nil, false
+	a.appendDiagnostic(pos, "unsupported op `%s` on types `%s` and `%s`.", operator, leftType, rightExpr.Type())
+	return hir.InvalidBinaryOp, nil, hir.Type{}, false
 }
 
-// checkShift accepts any integer shift amount and converts it to the left
-// operand's type, since LLVM shifts need both operands to match.
-func (a *Analyzer) checkShift(infixExpr *parser.InfixExpression, leftExpr, rightExpr hir.Expr) (hir.Expr, bool) {
-	valueBits, valueSigned := castIntegerInfo(leftExpr.Type())
+// converts shift type to same operand as left for llvm
+func (a *Analyzer) checkShift(pos *util.Position, operator string, leftType hir.Type, rightExpr hir.Expr) (hir.BinaryOp, hir.Expr, hir.Type, bool) {
+	valueBits, valueSigned := castIntegerInfo(leftType)
 	amountBits, amountSigned := castIntegerInfo(rightExpr.Type())
 	if valueBits == 0 || amountBits == 0 {
-		a.appendDiagnostic(infixExpr.Position(), "unsupported op `%s` on types `%s` and `%s`.", infixExpr.Operator, leftExpr.Type(), rightExpr.Type())
-		return nil, false
+		a.appendDiagnostic(pos, "unsupported op `%s` on types `%s` and `%s`.", operator, leftType, rightExpr.Type())
+		return hir.InvalidBinaryOp, nil, hir.Type{}, false
 	}
 
 	amount := rightExpr
@@ -980,17 +987,17 @@ func (a *Analyzer) checkShift(infixExpr *parser.InfixExpression, leftExpr, right
 		} else if amountSigned {
 			kind = hir.SignExtend
 		}
-		amount = &hir.Cast{ExprInfo: hir.ExprInfo{ResultType: leftExpr.Type()}, Kind: kind, Value: rightExpr}
+		amount = &hir.Cast{ExprInfo: hir.ExprInfo{ResultType: leftType}, Kind: kind, Value: rightExpr}
 	}
 
 	op := hir.ShiftLeft
-	if infixExpr.Operator == ">>" {
+	if operator == ">>" {
 		op = hir.LogicalShiftRight
 		if valueSigned {
 			op = hir.ArithmeticShiftRight
 		}
 	}
-	return makeBinaryNode(op, leftExpr, amount, leftExpr.Type()), true
+	return op, amount, leftType, true
 }
 
 func makeBinaryNode(op hir.BinaryOp, left, right hir.Expr, resultType hir.Type) *hir.Binary {
@@ -1002,11 +1009,7 @@ func makeBinaryNode(op hir.BinaryOp, left, right hir.Expr, resultType hir.Type) 
 	}
 }
 
-func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hir.Assignment, bool) {
-	if assignExpr.Operator != "" {
-		a.appendDiagnostic(assignExpr.Position(), "compound assignment `%s=` is not supported yet", assignExpr.Operator)
-		return nil, false
-	}
+func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (hir.Expr, bool) {
 	place, ok := a.checkPlace(assignExpr.Left)
 	if !ok {
 		return nil, false
@@ -1033,6 +1036,23 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (*hi
 	if !ok {
 		a.appendDiagnostic(assignExpr.Position(), "invalid expr on rhs of assignment.")
 		return nil, false
+	}
+
+	if assignExpr.Operator != "" {
+		op, rightExpr, resultType, ok := a.binaryOp(assignExpr.Position(), assignExpr.Right.Position(), assignExpr.Operator, place.Type(), rightExpr)
+		if !ok {
+			return nil, false
+		}
+		if resultType != place.Type() {
+			a.appendDiagnostic(assignExpr.Position(), "result of `%s` is `%s`, cannot assign it to `%s`.", assignExpr.Operator, resultType, place.Type())
+			return nil, false
+		}
+		return &hir.CompoundAssignment{
+			ExprInfo: hir.ExprInfo{ResultType: place.Type()},
+			Target:   place,
+			Op:       op,
+			Value:    rightExpr,
+		}, true
 	}
 
 	resolveNullptr(rightExpr, place.Type())
@@ -1086,8 +1106,6 @@ func (a *Analyzer) checkPlace(expr parser.Expression) (hir.Place, bool) {
 			Pointer:  expr,
 		}, true
 	} else if fieldExpr, ok := expr.(*parser.InfixExpression); ok && fieldExpr.Operator == "." {
-		// A struct pointer base is dereferenced, so its value is enough and it
-		// need not be a place itself (e.g. a call returning a pointer).
 		left, ok := a.checkExpr(fieldExpr.Left)
 		if !ok {
 			return nil, false

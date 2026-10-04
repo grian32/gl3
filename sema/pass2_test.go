@@ -299,7 +299,13 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 	{name: "shift float", source: `fnc sample(float a) -> float { return a << 1 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "<<", "float"}, line: 1}}},
 	{name: "shift by bool", source: `fnc sample(int a, bool b) -> int { return a >> b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", ">>", "bool"}, line: 1}}},
 	{name: "bitwise not bool", source: `fnc sample(bool a) -> bool { return ~a }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported prefix op", "~", "bool"}, line: 1}}},
-	{name: "compound assignment unsupported", source: `fnc sample(int32 x) -> int32 { x += 1i32 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"compound assignment", "+="}, line: 1}}},
+	{name: "compound assignment mismatched", source: `fnc sample(int32 x) -> int32 { x += 1i8 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"types of operands cannot be different"}, line: 1}}},
+	{name: "compound assignment float remainder", source: `fnc sample(float x) -> float { x %= 2.0 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "%", "float"}, line: 1}}},
+	{name: "compound assignment bool", source: `fnc sample(bool x) -> bool { x |= true return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "|", "bool"}, line: 1}}},
+	{name: "compound assignment shift float amount", source: `fnc sample(int32 x) -> int32 { x <<= 1.0 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "<<", "float"}, line: 1}}},
+	{name: "compound assignment pointer offset", source: `fnc sample(int32* a, int32* b) -> int32* { a += b return a }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"integer offset"}, line: 1}}},
+	{name: "compound assignment constant", source: `global const int32 x = 1i32
+fnc sample() -> int32 { x += 2i32 return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"constant globals", "not permitted"}, line: 2}}},
 	{name: "logical integer", source: `fnc sample() -> int32 {
  def bool x = 1i32 && 2i32 return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "&&", "int32"}, line: 2}}},

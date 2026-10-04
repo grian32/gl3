@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":8}
+// A narrower amount is widened to the target type, as with plain <<.
+fnc main() -> uint {
+    def uint x = 1u64
+    x <<= 3i8
+    return x
+}

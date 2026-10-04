@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":1}
+// Unsigned: 4294967254 % 3 is 1; a signed remainder (-42 % 3) would give 0.
+fnc main() -> uint32 {
+    def uint32 x = 4294967254u32
+    x %= 3u32
+    return x
+}

@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":71}
+// Unsigned: 1431655751 (low byte 71); a signed divide would give -14 (242).
+fnc main() -> uint32 {
+    def uint32 x = 4294967254u32
+    x /= 3u32
+    return x
+}

@@ -1,0 +1,8 @@
+// e2e: {"mode":"run","exit":42}
+extern fnc malloc(uint size) -> int32*
+fnc main() -> int32 {
+    def int32* data = malloc(4u64);
+    *data = 40i32;
+    *data += 2i32;
+    return *data
+}

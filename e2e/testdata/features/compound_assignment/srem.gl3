@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":255}
+// The result takes the sign of the left operand: -7 % 3 is -1.
+fnc main() -> int32 {
+    def int32 x = -7i32
+    x %= 3i32
+    return x
+}

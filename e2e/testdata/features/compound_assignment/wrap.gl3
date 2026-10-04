@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":128}
+// The operation happens at the target's width.
+fnc main() -> int8 {
+    def int8 x = 127i8
+    x += 1i8
+    return x
+}

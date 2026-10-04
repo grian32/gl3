@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":42}
+// The expression yields the stored value.
+fnc main() -> int32 {
+    def int32 x = 40i32
+    return x += 2i32
+}

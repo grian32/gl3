@@ -1,0 +1,8 @@
+// e2e: {"mode":"run","exit":12}
+// Right-associative: b becomes 2, then a += 2.
+fnc main() -> int32 {
+    def int32 a = 10i32
+    def int32 b = 1i32
+    a += b += 1i32
+    return a
+}

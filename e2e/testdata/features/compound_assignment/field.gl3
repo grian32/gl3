@@ -1,0 +1,8 @@
+// e2e: {"mode":"run","exit":42}
+struct Inner { int32 a int32 b }
+struct Outer { bool flag Inner inner }
+fnc main() -> int32 {
+    def Outer outer = Outer:{true, Inner:{1i32, 40i32}}
+    outer.inner.b += 2i32
+    return outer.inner.b
+}

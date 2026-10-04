@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":42}
+global int32 counter = 40i32
+fnc bump() -> none { counter += 2i32 }
+fnc main() -> int32 {
+    bump()
+    return counter
+}

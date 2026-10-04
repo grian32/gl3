@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":253}
+// -7 / 2 truncates to -3.
+fnc main() -> int32 {
+    def int32 x = -7i32
+    x /= 2i32
+    return x
+}

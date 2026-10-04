@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":63}
+// Unsigned: 4294967232 >> 26 is 63; an arithmetic shift would give -1 (255).
+fnc main() -> uint32 {
+    def uint32 x = 4294967232u32
+    x >>= 26u32
+    return x
+}
