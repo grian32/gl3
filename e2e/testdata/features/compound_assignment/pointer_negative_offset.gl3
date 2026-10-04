@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":42}
+// The offset is sign-extended: subtracting -1i8 moves forward one element, not back 255.
+extern fnc malloc(uint size) -> int32*
+fnc main() -> int32 {
+    def int32* data = malloc(16u64)
+    data[2u8] = 42i32
+    def int32* p = data
+    p += 1u8
+    p -= -1i8
+    return *p
+}

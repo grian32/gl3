@@ -225,6 +225,25 @@ ptr = &x
 struct_instance.field = value   // struct field assignment
 ```
 
+### Compound Assignment
+
+`x op= y` updates `x` with `x op y`. The operators are `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
+
+```gl3
+i += 1i32
+flags |= READ
+x <<= 2u8            // the shift amount may be any integer type, as with <<
+ptr += 1u64          // pointer arithmetic, as with +
+items[i] *= 2i32
+player.health -= 5i32
+```
+
+- The operand rules are the same as for the plain operator: `x += 1i8` is an error when `x` is an `int32`.
+- `x op= y` behaves like `x = x op y` evaluated left to right, except that `x` is evaluated only once. The target's current value is read before `y` is evaluated, so if `y` changes `x`, that change is overwritten.
+- The target is evaluated once, so `data[next()] += 1i32` calls `next` a single time.
+- The expression's value is the stored result: `return x += 2i32` returns the new `x`.
+- Like `=`, compound assignments are right-associative: `a += b += 1i32` updates `b` first, then adds the new `b` to `a`.
+
 ## Operators
 
 ### Prefix Operators
@@ -262,7 +281,7 @@ struct_instance.field = value   // struct field assignment
 
 ### Operator Precedence (lowest to highest)
 
-1. Assignment (`=`)
+1. Assignment (`=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`)
 2. Logical OR (`||`)
 3. Logical AND (`&&`)
 4. Equality (`==`, `!=`)

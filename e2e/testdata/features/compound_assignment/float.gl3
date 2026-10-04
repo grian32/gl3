@@ -1,0 +1,21 @@
+// e2e: {"mode":"run","stdout":"3.75\n3\n7.5\n3.75\n"}
+extern fnc malloc(uint size) -> char*
+extern fnc strfromf(char* buf, uint size, char* format, float value) -> int32
+extern fnc puts(char* text) -> int32
+fnc show(float value) -> none {
+    def char* buf = malloc(32u64)
+    strfromf(buf, 32u64, "%g", value)
+    puts(buf)
+}
+fnc main() -> int32 {
+    def float x = 1.5
+    x += 2.25
+    show(x)
+    x -= 0.75
+    show(x)
+    x *= 2.5
+    show(x)
+    x /= 2.0
+    show(x)
+    return 0i32
+}

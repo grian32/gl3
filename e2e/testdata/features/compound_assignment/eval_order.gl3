@@ -1,0 +1,11 @@
+// e2e: {"mode":"run","exit":11}
+// x op= y is x = x op y with x evaluated once, left to right: g is read as 10 before bump() runs.
+global int32 g = 10i32
+fnc bump() -> int32 {
+    g = 100i32
+    return 1i32
+}
+fnc main() -> int32 {
+    g += bump()
+    return g
+}

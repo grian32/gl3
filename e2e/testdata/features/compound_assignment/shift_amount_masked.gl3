@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":6}
+// The amount is masked to width-1, so shifting an int32 by 33 shifts by 1.
+fnc main() -> int32 {
+    def int32 x = 3i32
+    x <<= 33i32
+    return x
+}

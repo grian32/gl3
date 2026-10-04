@@ -516,6 +516,26 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 			return llvmapi.Value{}, err
 		}
 		return llvmapi.ConstInt(e.context.Int64Type(), e.targetData.TypeAllocSize(lowered), false), nil
+	case *hir.CompoundAssignment:
+		addr, err := e.emitPlace(expr.Target)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		t, err := e.lowerType(expr.Target.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		old := e.builder.CreateLoad(t, addr, "")
+		rhs, err := e.emitExpr(expr.Value)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		result, err := e.emitBinaryOp(expr.Op, old, rhs, expr.Target.Type(), expr.Value.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		e.builder.CreateStore(result, addr)
+		return result, nil
 	}
 	panic("emitter: emitExpr not implemented")
 }

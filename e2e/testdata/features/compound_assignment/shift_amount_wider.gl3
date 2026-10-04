@@ -1,0 +1,6 @@
+// e2e: {"mode":"run","exit":32}
+fnc main() -> int32 {
+    def int32 x = 1i32
+    x <<= 5
+    return x
+}
