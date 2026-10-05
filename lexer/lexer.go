@@ -51,7 +51,6 @@ var singleCharToken = map[byte]TokenType{
 	'[': LBRACKET,
 	']': RBRACKET,
 	',': COMMA,
-	'.': DOT,
 	':': COLON,
 }
 
@@ -137,6 +136,29 @@ func (l *Lexer) NextToken() Token {
 		} else {
 			l.extendToken(&tok, '=', GTEQ)
 		}
+	case '.':
+		if l.peekChar() == '.' && len(l.input) > l.readPos+1 && l.input[l.readPos+1] == '.' {
+			tok.Position = util.Position{
+				StartLine: l.currLine,
+				StartCol:  l.currCh,
+			}
+			l.readChar()
+			l.readChar()
+			tok.Literal = "..."
+			tok.Type = ELLIPSIS
+			tok.Position.EndLine = l.currLine
+			tok.Position.EndCol = l.currCh
+		} else {
+			tok.Literal = "."
+			tok.Type = DOT
+			tok.Position = util.Position{
+				StartLine: l.currLine,
+				StartCol:  l.currCh,
+				EndLine:   l.currLine,
+				EndCol:    l.currCh,
+			}
+		}
+
 	case 0:
 		tok.Literal = ""
 		tok.Type = EOF

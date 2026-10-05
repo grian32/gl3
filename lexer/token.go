@@ -76,6 +76,7 @@ const (
 	EXTERN
 	PRIVATE
 	NULLPTR
+	ELLIPSIS
 	EOF
 )
 
@@ -205,6 +206,8 @@ func (tt TokenType) String() string {
 		return ":"
 	case NULLPTR:
 		return "NULLPTR"
+	case ELLIPSIS:
+		return "..."
 	default:
 		return "UNKNOWN"
 	}

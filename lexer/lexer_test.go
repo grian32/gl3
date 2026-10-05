@@ -73,3 +73,43 @@ func TestOperatorTokenPosition(t *testing.T) {
 		t.Errorf("position = %+v, want line 1, cols 3-5", p)
 	}
 }
+
+func TestDotTokens(t *testing.T) {
+	tests := []struct {
+		src  string
+		want []TokenType
+	}{
+		{"a.b", []TokenType{IDENTIFIER, DOT, IDENTIFIER}},
+		{"...", []TokenType{ELLIPSIS}},
+		{"f(a, ...)", []TokenType{IDENTIFIER, LPAREN, IDENTIFIER, COMMA, ELLIPSIS, RPAREN}},
+		{"....", []TokenType{ELLIPSIS, DOT}},
+		{". . .", []TokenType{DOT, DOT, DOT}},
+		// Must not index past the end of the input looking for a third dot.
+		{"..", []TokenType{DOT, DOT}},
+		{"x..", []TokenType{IDENTIFIER, DOT, DOT}},
+		{"x.", []TokenType{IDENTIFIER, DOT}},
+	}
+	for _, tt := range tests {
+		got, literals := lexTypes(tt.src)
+		if !slices.Equal(got, tt.want) {
+			t.Errorf("%q: got %v (%q), want %v", tt.src, got, literals, tt.want)
+		}
+	}
+}
+
+func TestEllipsisTokenPosition(t *testing.T) {
+	l := New("a, ...)")
+	l.NextToken()
+	l.NextToken()
+	tok := l.NextToken()
+	if tok.Literal != "..." {
+		t.Fatalf("literal = %q, want %q", tok.Literal, "...")
+	}
+	p := tok.Position
+	if p.StartLine != 1 || p.EndLine != 1 || p.StartCol != 4 || p.EndCol != 6 {
+		t.Errorf("position = %+v, want line 1, cols 4-6", p)
+	}
+	if next := l.NextToken(); next.Type != RPAREN {
+		t.Errorf("token after ellipsis = %v, want %v", next.Type, RPAREN)
+	}
+}
