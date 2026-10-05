@@ -284,6 +284,7 @@ type FunctionStatement struct {
 	Params   []FunctionParameter
 	Body     *BlockStatement
 	Private  bool
+	Variadic bool
 	position util.Position
 }
 
@@ -303,6 +304,12 @@ func (fs *FunctionStatement) String() string {
 		if i != len(fs.Params)-1 {
 			out.WriteString(", ")
 		}
+	}
+	if fs.Variadic {
+		if len(fs.Params) > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString("...")
 	}
 	out.WriteString(") -> " + fs.Type.String() + " { " + fs.Body.String() + " }")
 	return out.String()
@@ -662,6 +669,7 @@ type ExternFunctionStatement struct {
 	ReturnType lexer.VarType
 	Params     []FunctionParameter
 	Private    bool
+	Variadic   bool
 	position   util.Position
 }
 
@@ -680,6 +688,12 @@ func (e *ExternFunctionStatement) String() string {
 		if i != len(e.Params)-1 {
 			out.WriteString(", ")
 		}
+	}
+	if e.Variadic {
+		if len(e.Params) > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString("...")
 	}
 	out.WriteString(") -> " + e.ReturnType.String())
 

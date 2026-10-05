@@ -27,7 +27,7 @@ func (p *Parser) parseExternStatement(private bool) Statement {
 			StartLine: p.currToken.Position.StartLine,
 			StartCol:  p.currToken.Position.StartCol,
 		}, Private: private}
-		name, params, retType := p.parseFunctionHeader()
+		name, params, retType, variadic := p.parseFunctionHeader()
 		if name == nil || params == nil {
 			stmt.Position().CopyEnd(&p.currToken.Position)
 			return nil
@@ -35,6 +35,7 @@ func (p *Parser) parseExternStatement(private bool) Statement {
 		stmt.Name = name.Value
 		stmt.Params = params
 		stmt.ReturnType = retType
+		stmt.Variadic = variadic
 
 		return stmt
 	}
@@ -94,22 +95,33 @@ func (p *Parser) parseImportStatement() Statement {
 	return stmt
 }
 
-// returns: name ident, []params, return type
-func (p *Parser) parseFunctionHeader() (*IdentifierExpression, []FunctionParameter, lexer.VarType) {
+// returns: name ident, []params, return type, variadic
+func (p *Parser) parseFunctionHeader() (*IdentifierExpression, []FunctionParameter, lexer.VarType, bool) {
 	p.NextToken()
 	if !p.currTokenIs(lexer.IDENTIFIER) {
 		p.appendError(&p.currToken.Position, "expected identifier after fnc keyword")
-		return nil, nil, lexer.VarType{}
+		return nil, nil, lexer.VarType{}, false
 	}
 	name := &IdentifierExpression{Token: p.currToken, Value: p.currToken.Literal}
 	p.NextToken()
 	if !p.expectCurr(lexer.LPAREN) {
-		return nil, nil, lexer.VarType{}
+		return nil, nil, lexer.VarType{}, false
 	}
 
 	params := []FunctionParameter{}
+	variadic := false
 	// for empty arg list if it is rparen then it just stops immediately since we curr are on lparen
 	for !p.currTokenIs(lexer.RPAREN) {
+		if p.currTokenIs(lexer.ELLIPSIS) {
+			p.NextToken()
+			if !p.currTokenIs(lexer.RPAREN) {
+				p.appendError(&p.currToken.Position, "expected ) after variadic in function definition")
+				return nil, nil, lexer.VarType{}, false
+			}
+			variadic = true
+			break
+		}
+
 		paramType, paramName, typeOk, identOk := p.parseTypedIdentifier()
 		if !typeOk || !identOk {
 			if !typeOk {
@@ -118,7 +130,7 @@ func (p *Parser) parseFunctionHeader() (*IdentifierExpression, []FunctionParamet
 			if !identOk {
 				p.appendError(&p.currToken.Position, "expected identifier after type in function definition params")
 			}
-			return nil, nil, lexer.VarType{}
+			return nil, nil, lexer.VarType{}, false
 		}
 		param := FunctionParameter{
 			Type: paramType,
@@ -132,21 +144,21 @@ func (p *Parser) parseFunctionHeader() (*IdentifierExpression, []FunctionParamet
 			p.NextToken()
 			continue
 		} else {
-			return nil, nil, lexer.VarType{}
+			return nil, nil, lexer.VarType{}, false
 		}
 	}
 	p.NextToken()
 
 	if !p.expectCurr(lexer.ARROW) {
-		return nil, nil, lexer.VarType{}
+		return nil, nil, lexer.VarType{}, false
 	}
 	retType, ok := p.parseType()
 	if !ok {
 		p.appendError(&p.currToken.Position, "expected return type after arrow in function decl")
-		return nil, nil, lexer.VarType{}
+		return nil, nil, lexer.VarType{}, false
 	}
 
-	return name, params, retType
+	return name, params, retType, variadic
 }
 
 func (p *Parser) parseFunctionStatement(private bool) Statement {
@@ -154,7 +166,7 @@ func (p *Parser) parseFunctionStatement(private bool) Statement {
 		StartLine: p.currToken.Position.StartLine,
 		StartCol:  p.currToken.Position.EndCol,
 	}, Private: private}
-	name, params, retType := p.parseFunctionHeader()
+	name, params, retType, variadic := p.parseFunctionHeader()
 	if name == nil || params == nil {
 		stmt.Position().CopyEnd(&p.currToken.Position)
 		return nil
@@ -162,6 +174,7 @@ func (p *Parser) parseFunctionStatement(private bool) Statement {
 	stmt.Name = name
 	stmt.Params = params
 	stmt.Type = retType
+	stmt.Variadic = variadic
 	if !p.expectCurr(lexer.LBRACE) {
 		return nil
 	}

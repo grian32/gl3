@@ -337,6 +337,60 @@ func TestPrivateAndExternDeclarations(t *testing.T) {
 	}
 }
 
+func TestVariadicFunctions(t *testing.T) {
+	tests := map[string]InputOutput{
+		"extern with params": {
+			"extern fnc printf(char* fmt, ...) -> int32",
+			"extern fnc printf(Char* fmt, ...) -> Int32;",
+		},
+		"extern only ellipsis": {
+			"extern fnc f(...) -> none",
+			"extern fnc f(...) -> Void;",
+		},
+		"fnc with params": {
+			"fnc f(int32 a, int8 b, ...) -> none { \n }",
+			"fnc f(Int32 a, Int8 b, ...) -> Void {  };",
+		},
+	}
+
+	runTests(t, tests)
+
+	t.Run("flag set", func(t *testing.T) {
+		stmt := parseSingleStatement(t, "extern fnc printf(char* fmt, ...) -> int32")
+		f, ok := stmt.(*ExternFunctionStatement)
+		if !ok {
+			t.Fatalf("expected extern function, got %T", stmt)
+		}
+		if !f.Variadic || len(f.Params) != 1 {
+			t.Fatalf("wrong variadic declaration: %+v", f)
+		}
+	})
+	t.Run("flag unset", func(t *testing.T) {
+		stmt := parseSingleStatement(t, "extern fnc puts(char* s) -> int32")
+		f, ok := stmt.(*ExternFunctionStatement)
+		if !ok {
+			t.Fatalf("expected extern function, got %T", stmt)
+		}
+		if f.Variadic {
+			t.Fatalf("unexpected variadic: %+v", f)
+		}
+	})
+}
+
+func TestVariadicErrors(t *testing.T) {
+	tests := map[string]struct {
+		input       string
+		errorSubstr string
+	}{
+		"param after ellipsis": {"extern fnc f(int32 a, ..., int32 b) -> none", "expected ) after variadic"},
+		"double ellipsis":      {"extern fnc f(..., ...) -> none", "expected ) after variadic"},
+		"missing ret type":     {"extern fnc f(int32 a, ...) ->", "expected return type"},
+		"missing arrow":        {"extern fnc f(int32 a, ...) int32", ""},
+	}
+
+	runErrorTests(t, tests)
+}
+
 func TestImportStatement(t *testing.T) {
 	tests := map[string]InputOutput{
 		"std module": {
