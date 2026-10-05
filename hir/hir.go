@@ -363,6 +363,14 @@ type ArrayLiteral struct {
 
 func (*ArrayLiteral) exprNode() {}
 
+// Vararg reads the next variadic argument. Its type is always a promoted type;
+// sema wraps it in a Cast when the requested type is narrower.
+type Vararg struct {
+	ExprInfo
+}
+
+func (*Vararg) exprNode() {}
+
 type Sizeof struct {
 	ExprInfo
 	OperandType Type
