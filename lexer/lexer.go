@@ -406,6 +406,8 @@ func identLookup(lit string) (TokenType, BaseVarType) {
 		return PRIVATE, None
 	case "nullptr":
 		return NULLPTR, None
+	case "float32":
+		return TYPE, Float32
 	}
 
 	return IDENTIFIER, None

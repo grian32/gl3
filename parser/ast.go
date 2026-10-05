@@ -440,7 +440,7 @@ func (ce *CastExpression) Position() *util.Position {
 
 type FloatLiteral struct {
 	Token lexer.Token
-	Value float32
+	Value float64
 	Type  lexer.VarType // opts : Float only
 }
 

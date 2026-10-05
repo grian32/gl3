@@ -15,6 +15,7 @@ const (
 	Bool
 	Void
 	Float
+	Float32
 	StructType
 	// Null is the type of a nullptr not yet given a pointer type by its context.
 	Null
@@ -127,7 +128,7 @@ func (*NullPointer) exprNode() {}
 
 type FloatLiteral struct {
 	ExprInfo
-	Value float32
+	Value float64
 }
 
 func (*FloatLiteral) exprNode() {}
@@ -212,6 +213,8 @@ const (
 	UnsignedIntToFloat
 	FloatToSignedInt
 	FloatToUnsignedInt
+	FloatExtend
+	FloatTruncate
 	PointerToInt
 	IntToPointer
 	PointerCast

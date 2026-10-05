@@ -31,6 +31,8 @@ func (t Type) String() string {
 		name = "none"
 	case Float:
 		name = "float"
+	case Float32:
+		name = "float32"
 	case Null:
 		name = "nullptr"
 	case StructType:
@@ -92,6 +94,8 @@ func ConvertBaseType(bvt lexer.BaseVarType) BaseType {
 		return Void
 	case lexer.Float:
 		return Float
+	case lexer.Float32:
+		return Float32
 	default:
 		return Invalid
 	}

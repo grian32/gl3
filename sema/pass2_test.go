@@ -23,6 +23,8 @@ var pass2ExpressionTests = []struct {
 	{name: "uint16 literal", source: `fnc sample() -> uint16 { return 7u16 }`, want: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint16}}, Value: 7}},
 	{name: "uint8 literal", source: `fnc sample() -> uint8 { return 7u8 }`, want: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint8}}, Value: 7}},
 	{name: "boolean literal", source: `fnc sample() -> bool { return true }`, want: &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}},
+	{name: "float literal keeps double precision", source: `fnc sample() -> float { return 0.1 }`, want: &ast.FloatLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, Value: 0.1}},
+	{name: "f64 float literal", source: `fnc sample() -> float { return 1.5f64 }`, want: &ast.FloatLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, Value: 1.5}},
 	{name: "float literal", source: `fnc sample() -> float { return 1.5 }`, want: &ast.FloatLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Float}}, Value: 1.5}},
 	{name: "character literal", source: `fnc sample() -> int8 { return 'A' }`, want: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int8}}, Value: 65}},
 	{name: "nullptr takes return type", source: `fnc sample() -> int32* { return nullptr }`, want: &ast.NullPointer{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}}},
@@ -296,6 +298,10 @@ fnc sample() -> none { value.x = 2i32 }`, diagnostics: []expectedDiagnostic{{mes
 	{name: "arithmetic boolean", source: `fnc sample() -> int32 {
  def bool x = true + false return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"bool"}, line: 2}}},
+	{name: "f32 literal returned as float", source: `fnc sample() -> float { return 1.5f32 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"float32", "float"}, line: 1}}},
+	{name: "negated f32 literal returned as float", source: `fnc sample() -> float { return -1.5f32 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"float32", "float"}, line: 1}}},
+	{name: "float32 param returned as float", source: `fnc sample(float32 x) -> float { return x }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"float32", "float"}, line: 1}}},
+	{name: "float32 plus float", source: `fnc sample(float32 a, float b) -> float { return a + b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"float32", "float"}, line: 1}}},
 	{name: "float remainder", source: `fnc sample(float a, float b) -> float { return a % b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "%", "float"}, line: 1}}},
 	{name: "float bitwise and", source: `fnc sample(float a, float b) -> float { return a & b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "&", "float"}, line: 1}}},
 	{name: "bool bitwise or", source: `fnc sample(bool a, bool b) -> bool { return a | b }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unsupported op", "|", "bool"}, line: 1}}},

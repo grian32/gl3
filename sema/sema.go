@@ -419,7 +419,7 @@ func (a *Analyzer) checkExpr(expr parser.Expression) (hir.Expr, bool) {
 		}, true
 	case *parser.FloatLiteral:
 		return &hir.FloatLiteral{
-			ExprInfo: hir.Info(hir.Float),
+			ExprInfo: hir.Info(hir.ConvertBaseType(expr.Type.Base)),
 			Value:    expr.Value,
 		}, true
 	case *parser.IdentifierExpression:
@@ -526,12 +526,17 @@ func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {
 		default:
 			kind = hir.ZeroExtend
 		}
-	case sourceBits != 0 && target.Base == hir.Float && target.Pointer == 0:
+	case isFloat(source) && isFloat(target):
+		kind = hir.FloatTruncate
+		if target.Base == hir.Float {
+			kind = hir.FloatExtend
+		}
+	case sourceBits != 0 && isFloat(target):
 		kind = hir.UnsignedIntToFloat
 		if sourceSigned {
 			kind = hir.SignedIntToFloat
 		}
-	case source.Base == hir.Float && source.Pointer == 0 && targetBits != 0:
+	case isFloat(source) && targetBits != 0:
 		kind = hir.FloatToUnsignedInt
 		if targetSigned {
 			kind = hir.FloatToSignedInt
@@ -546,6 +551,10 @@ func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {
 		Kind:     kind,
 		Value:    value,
 	}, true
+}
+
+func isFloat(t hir.Type) bool {
+	return t.Pointer == 0 && (t.Base == hir.Float || t.Base == hir.Float32)
 }
 
 func castIntegerInfo(t hir.Type) (bits uint8, signed bool) {
@@ -685,7 +694,7 @@ func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
 		case *parser.IntegerLiteral:
 			return a.convertIntLiteral(right, true)
 		case *parser.FloatLiteral:
-			return &hir.FloatLiteral{ExprInfo: hir.Info(hir.Float), Value: -right.Value}, true
+			return &hir.FloatLiteral{ExprInfo: hir.Info(hir.ConvertBaseType(right.Type.Base)), Value: -right.Value}, true
 		}
 	case "!":
 		if right, ok := expr.Right.(*parser.BooleanExpression); ok {
@@ -705,7 +714,7 @@ func (a *Analyzer) checkPrefix(expr *parser.PrefixExpression) (hir.Expr, bool) {
 			switch t.Base {
 			case hir.Int, hir.Int32, hir.Int16, hir.Int8:
 				op = hir.IntNegate
-			case hir.Float:
+			case hir.Float, hir.Float32:
 				op = hir.FloatNegate
 			}
 		case "!":
@@ -930,7 +939,7 @@ func (a *Analyzer) binaryOp(pos, rightPos *util.Position, operator string, leftT
 			}
 			return op, rightExpr, boolType, true
 		}
-	case hir.Float:
+	case hir.Float, hir.Float32:
 		switch operator {
 		case "+":
 			return hir.FloatAdd, rightExpr, leftType, true

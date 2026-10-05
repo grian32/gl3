@@ -389,7 +389,11 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		return llvmapi.ConstPointerNull(t), nil
 	case *hir.FloatLiteral:
-		return llvmapi.ConstFloat(e.context.FloatType(), float64(expr.Value)), nil
+		t, err := e.lowerType(expr.Type())
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return llvmapi.ConstFloat(t, expr.Value), nil
 	case *hir.StringLiteral:
 		data := e.context.ConstString(expr.Value, false)
 		global := llvmapi.AddGlobal(e.module, data.Type(), ".str")
@@ -438,6 +442,10 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 			return e.builder.CreateFPToSI(v, t, ""), nil
 		case hir.FloatToUnsignedInt:
 			return e.builder.CreateFPToUI(v, t, ""), nil
+		case hir.FloatExtend:
+			return e.builder.CreateFPExt(v, t, ""), nil
+		case hir.FloatTruncate:
+			return e.builder.CreateFPTrunc(v, t, ""), nil
 		case hir.PointerToInt:
 			return e.builder.CreatePtrToInt(v, t, ""), nil
 		case hir.IntToPointer:
@@ -732,6 +740,8 @@ func (e *Emitter) lowerType(t hir.Type) (llvmapi.Type, error) {
 	case hir.Bool:
 		lowered = e.context.Int1Type()
 	case hir.Float:
+		lowered = e.context.DoubleType()
+	case hir.Float32:
 		lowered = e.context.FloatType()
 	case hir.Void:
 		lowered = e.context.VoidType()

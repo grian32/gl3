@@ -73,16 +73,23 @@ func (p *Parser) parseFloatLiteral() Expression {
 	vt := lexer.VarType{Base: lexer.Float, Pointer: 0}
 	lit := &FloatLiteral{Token: p.currToken, Type: vt}
 
-	value, err := strconv.ParseFloat(p.currToken.Literal, 32)
+	value, err := strconv.ParseFloat(p.currToken.Literal, 64)
 	if err != nil {
 		p.appendError(&p.currToken.Position, "could not parse %q as float", p.currToken.Literal)
 	}
 
-	lit.Value = float32(value)
+	lit.Value = value
 
-	if p.currToken.Suffix != "" {
+	switch p.currToken.Suffix {
+	case "", "f64":
+		lit.Type.Base = lexer.Float
+	case "f32":
+		lit.Type.Base = lexer.Float32
+	default:
+		lit.Type.Base = lexer.None
 		p.appendError(&p.currToken.Position, "unknown float literal suffix %s", p.currToken.Suffix)
 	}
+
 	p.NextToken()
 
 	return lit

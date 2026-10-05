@@ -236,7 +236,8 @@ const (
 	Uint8
 	Bool
 	Void
-	Float
+	Float   // 64 bit aka double
+	Float32 // 32 bit aka float
 )
 
 func (bvt BaseVarType) String() string {
@@ -267,6 +268,8 @@ func (bvt BaseVarType) String() string {
 		return "Bool"
 	case Float:
 		return "Float"
+	case Float32:
+		return "Float32"
 	default:
 		return "Unknown"
 	}

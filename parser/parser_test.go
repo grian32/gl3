@@ -88,6 +88,14 @@ func TestLiterals(t *testing.T) {
 			"1.5",
 			"1.5(Float);",
 		},
+		"float f64 suffix": {
+			"1.5f64",
+			"1.5(Float);",
+		},
+		"float f32 suffix": {
+			"1.5f32",
+			"1.5(Float32);",
+		},
 		"true bool": {
 			"true",
 			"true;",
@@ -107,6 +115,34 @@ func TestLiterals(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+func TestFloatLiteralPrecision(t *testing.T) {
+	tests := map[string]struct {
+		input string
+		want  float64
+		base  lexer.BaseVarType
+	}{
+		"double keeps precision": {"0.1", 0.1, lexer.Float},
+		"f64 keeps precision":    {"0.1f64", 0.1, lexer.Float},
+		"f32 suffix":             {"0.5f32", 0.5, lexer.Float32},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			stmt := parseSingleStatement(t, test.input)
+			es, ok := stmt.(*ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected expression statement, got %T", stmt)
+			}
+			lit, ok := es.Expression.(*FloatLiteral)
+			if !ok {
+				t.Fatalf("expected float literal, got %T", es.Expression)
+			}
+			if lit.Value != test.want || lit.Type.Base != test.base {
+				t.Errorf("got %v (%v), want %v (%v)", lit.Value, lit.Type.Base, test.want, test.base)
+			}
+		})
+	}
 }
 
 func TestIntegerBoundaryValues(t *testing.T) {
@@ -162,6 +198,10 @@ func TestDefStatement(t *testing.T) {
 		"float def": {
 			"def float x = 1.5",
 			"def Float x = 1.5(Float);",
+		},
+		"float32 def": {
+			"def float32 x = 1.5f32",
+			"def Float32 x = 1.5(Float32);",
 		},
 		"bool def": {
 			"def bool x = true",
@@ -1187,6 +1227,8 @@ func TestMalformedParserInput(t *testing.T) {
 		"unknown integer suffix":      {"1u128", "unknown integer literal suffix u128"},
 		"misspelled integer suffix":   {"1i33", "unknown integer literal suffix i33"},
 		"unknown float suffix":        {"1.5abc", "unknown float literal suffix abc"},
+		"integer suffix on float":     {"1.5i32", "unknown float literal suffix i32"},
+		"misspelled float suffix":     {"1.5f16", "unknown float literal suffix f16"},
 		"unsuffixed overflow":         {"18446744073709551616", `could not parse "18446744073709551616" as integer`},
 		"unsigned overflow":           {"18446744073709551616u64", `could not parse "18446744073709551616" as integer`},
 	}

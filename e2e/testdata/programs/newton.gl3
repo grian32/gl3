@@ -1,7 +1,7 @@
 // e2e: {"mode":"run","exit":42}
 // Newton's method for sqrt(1764), counting iterations in a global.
 global int32 iterations = 0i32
-fnc sqrt(float x) -> float {
+fnc newton_sqrt(float x) -> float {
     def float guess = x / 2.0
     def int32 i = 0i32
     while i < 20i32 {
@@ -12,7 +12,7 @@ fnc sqrt(float x) -> float {
     return guess
 }
 fnc main() -> int32 {
-    def float root = sqrt(1764.0)
+    def float root = newton_sqrt(1764.0)
     if iterations != 20i32 { return 1i32 }
     return (root + 0.5) as int32
 }
