@@ -359,7 +359,15 @@ fnc sample() -> int32 { return vf() }`, diagnostics: []expectedDiagnostic{{messa
 	{name: "variadic call fixed arg type", source: `extern fnc vf(int32 n, ...) -> int32
 fnc sample() -> int32 { return vf(true, 1i32) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"int32", "bool"}, line: 2}}},
 	{name: "variadic call invalid extra arg", source: `extern fnc vf(int32 n, ...) -> int32
-fnc sample() -> int32 { return vf(1i32, missing) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"missing"}, line: 2}}},
+fnc sample() -> int32 { return vf(1i32, missing) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"missing"}, line: 2}, {messageContains: []string{"argument 2", "invalid expression"}, line: 2}}},
+	{name: "variadic nullptr extra arg", source: `extern fnc vf(int32 n, ...) -> int32
+fnc sample() -> int32 { return vf(1i32, nullptr) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument 2", "nullptr"}, line: 2}}},
+	{name: "variadic none extra arg", source: `extern fnc vf(int32 n, ...) -> int32
+fnc other() -> none {}
+fnc sample() -> int32 { return vf(1i32, other()) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument 2", "none"}, line: 3}}},
+	{name: "variadic struct value extra arg", source: `struct S { int32 x }
+extern fnc vf(int32 n, ...) -> int32
+fnc sample(S s) -> int32 { return vf(1i32, s) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument 2", "struct value"}, line: 3}}},
 	{name: "non variadic call too many args", source: `fnc other(int32 x) -> int32 { return x }
 fnc sample() -> int32 { return other(1i32, 2i32) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument"}, line: 2}}},
 	{name: "call argument type", source: `fnc other(int32 x) -> int32 { return x }

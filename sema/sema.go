@@ -1171,13 +1171,18 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 	for i, p := range callExpr.Params {
 		hirExpr, ok := a.checkExpr(p)
 		if !ok {
-			a.appendDiagnostic(p.Position(), "argument %d (`%s`): invalid expression", i+1, fncNode.Parameters[i].Name)
+			a.appendDiagnostic(p.Position(), "argument %d: invalid expression", i+1)
 			badParam = true
 			continue
 		}
-		resolveNullptr(hirExpr, fncNode.Parameters[i].Type)
-		if hirExpr.Type() != fncNode.Parameters[i].Type {
-			a.appendDiagnostic(p.Position(), "argument %d (`%s`): expected `%s`, got `%s`", i+1, fncNode.Parameters[i].Name, fncNode.Parameters[i].Type, hirExpr.Type())
+		if i < len(fncNode.Parameters) {
+			resolveNullptr(hirExpr, fncNode.Parameters[i].Type)
+			if hirExpr.Type() != fncNode.Parameters[i].Type {
+				a.appendDiagnostic(p.Position(), "argument %d (`%s`): expected `%s`, got `%s`", i+1, fncNode.Parameters[i].Name, fncNode.Parameters[i].Type, hirExpr.Type())
+				badParam = true
+				continue
+			}
+		} else if !a.checkVariadicArg(p.Position(), i, hirExpr.Type()) {
 			badParam = true
 			continue
 		}
@@ -1200,6 +1205,21 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 		Function: fncNode.Id,
 		Args:     args,
 	}, true
+}
+
+// checkVariadicArg rejects extra arguments that have no type to pass through `...`.
+func (a *Analyzer) checkVariadicArg(pos *util.Position, i int, t hir.Type) bool {
+	switch {
+	case t.Base == hir.Null:
+		a.appendDiagnostic(pos, "argument %d: nullptr needs a pointer type from its context", i+1)
+	case t.Base == hir.Void && t.Pointer == 0:
+		a.appendDiagnostic(pos, "argument %d: cannot pass `none` as a variadic argument", i+1)
+	case t.Base == hir.StructType && t.Pointer == 0:
+		a.appendDiagnostic(pos, "argument %d: cannot pass struct value `%s` as a variadic argument", i+1, t)
+	default:
+		return true
+	}
+	return false
 }
 
 func (a *Analyzer) resolveSymbol(name string) (hir.Symbol, bool) {
