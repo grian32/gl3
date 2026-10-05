@@ -51,6 +51,7 @@ type Function struct {
 	Private        bool
 	// Parameters occupy the first len(Parameters) entries in Locals, in order.
 	Locals   []Local
+	Variadic bool
 	External bool
 	Body     Block
 }

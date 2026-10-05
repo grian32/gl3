@@ -398,6 +398,14 @@ func TestAnalyze(t *testing.T) {
 	}
 }
 
+// failOnPanic reports a panic as a test failure so one bad case doesn't abort the package.
+func failOnPanic(t *testing.T) {
+	t.Helper()
+	if r := recover(); r != nil {
+		t.Errorf("panicked: %v", r)
+	}
+}
+
 func parseDeclarations(t *testing.T, source string) *parser.Program {
 	t.Helper()
 	p := parser.New(lexer.New(source))
@@ -546,6 +554,23 @@ var externDeclarationTests = []struct {
 		symbols: map[string]hir.Symbol{"read": hir.FunctionID(0)},
 	},
 	{
+		name:   "extern variadic function",
+		source: `extern fnc printf(char* fmt, ...) -> int32`,
+		want: hir.Program{Functions: []hir.Function{{
+			Name: "printf", Id: 0, External: true, Variadic: true,
+			Parameters:     []hir.TypedName{{Name: "fmt", Type: hir.Type{Base: hir.Int8, Pointer: 1}}},
+			ParameterNames: map[string]int{"fmt": 0},
+			ReturnType:     hir.Type{Base: hir.Int32},
+		}}},
+		symbols: map[string]hir.Symbol{"printf": hir.FunctionID(0)},
+	},
+	{
+		name:    "extern variadic function without fixed parameters",
+		source:  `extern fnc log(...) -> none`,
+		want:    hir.Program{Functions: []hir.Function{{Name: "log", Id: 0, External: true, Variadic: true, ReturnType: hir.Type{Base: hir.Void}}}},
+		symbols: map[string]hir.Symbol{"log": hir.FunctionID(0)},
+	},
+	{
 		name:    "extern void function without parameters",
 		source:  `extern fnc release() -> none`,
 		want:    hir.Program{Functions: []hir.Function{{Name: "release", Id: 0, External: true, ReturnType: hir.Type{Base: hir.Void}}}},
@@ -655,6 +680,7 @@ extern struct repeated`, diagnostics: []expectedDiagnostic{{messageContains: []s
 func TestExternDeclarations(t *testing.T) {
 	for _, test := range externDeclarationTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			c := New()
 			got, diagnostics := c.Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)

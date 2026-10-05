@@ -149,6 +149,9 @@ var pass2ExpressionTests = []struct {
 	},
 	{name: "field index follows declaration order", source: `struct Pair { bool x int32 y } fnc sample(Pair p) -> int32 { return p.y }`, want: &ast.FieldAccess{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Base: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType}}, ID: 0}, FieldIndex: 1}},
 	{name: "forward call", source: `fnc sample() -> int32 { return later(7i32) } fnc later(int32 x) -> int32 { return x }`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 1, Args: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}}},
+	{name: "variadic call with extra args", source: `fnc sample() -> int32 { return vf(1i32, 2i32, true) } extern fnc vf(int32 n, ...) -> int32`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 1, Args: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}, &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},
+	{name: "variadic call with only fixed args", source: `fnc sample() -> int32 { return vf(1i32) } extern fnc vf(int32 n, ...) -> int32`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 1, Args: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}}}},
+	{name: "variadic call with no fixed params", source: `fnc sample() -> int32 { return vf(true) } extern fnc vf(...) -> int32`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 1, Args: []ast.Expr{&ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},
 	{name: "recursive call", source: `fnc sample(int32 x) -> int32 { return sample(x) }`, want: &ast.Call{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Function: 0, Args: []ast.Expr{&ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}}}},
 	{name: "assignment expression", source: `fnc sample(int32 x) -> int32 { return x = 7i32 }`, want: &ast.Assignment{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Target: &ast.LocalPlace{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, ID: 0}, Value: &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 7}}},
 }
@@ -156,6 +159,7 @@ var pass2ExpressionTests = []struct {
 func TestPass2Expressions(t *testing.T) {
 	for _, test := range pass2ExpressionTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
@@ -344,6 +348,14 @@ fnc sample() -> int32 { x += 2i32 return x }`, diagnostics: []expectedDiagnostic
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"unknown", "hidden"}, line: 2}}},
 	{name: "call arity", source: `fnc other(int32 x) -> int32 { return x }
 fnc sample() -> int32 { return other() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument"}, line: 2}}},
+	{name: "variadic call too few args", source: `extern fnc vf(int32 n, ...) -> int32
+fnc sample() -> int32 { return vf() }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument"}, line: 2}}},
+	{name: "variadic call fixed arg type", source: `extern fnc vf(int32 n, ...) -> int32
+fnc sample() -> int32 { return vf(true, 1i32) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"int32", "bool"}, line: 2}}},
+	{name: "variadic call invalid extra arg", source: `extern fnc vf(int32 n, ...) -> int32
+fnc sample() -> int32 { return vf(1i32, missing) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"missing"}, line: 2}}},
+	{name: "non variadic call too many args", source: `fnc other(int32 x) -> int32 { return x }
+fnc sample() -> int32 { return other(1i32, 2i32) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"argument"}, line: 2}}},
 	{name: "call argument type", source: `fnc other(int32 x) -> int32 { return x }
 fnc sample() -> int32 { return other(true) }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"int32", "bool"}, line: 2}}},
 	{name: "call nonfunction", source: `global int32 x = 1i32
@@ -367,6 +379,7 @@ fnc second() -> none { break }`, diagnostics: []expectedDiagnostic{{messageConta
 func TestPass2Diagnostics(t *testing.T) {
 	for _, test := range pass2DiagnosticTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			_, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 		})
@@ -394,6 +407,7 @@ func TestPass2FixturesParse(t *testing.T) {
 func TestPass2Bodies(t *testing.T) {
 	for _, test := range pass2BodyTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
@@ -491,6 +505,7 @@ global const Outer value = Outer:{true, Inner:{7i32}}`,
 func TestPass2Globals(t *testing.T) {
 	for _, test := range pass2GlobalTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil {
@@ -519,6 +534,7 @@ var pass2ProgramTests = []struct {
 func TestPass2Program(t *testing.T) {
 	for _, test := range pass2ProgramTests {
 		t.Run(test.name, func(t *testing.T) {
+			defer failOnPanic(t)
 			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			assertDeclarations(t, got, &test.want)

@@ -1148,11 +1148,15 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 	}
 
 	fncNode := a.Functions[int(fnc.(hir.FunctionID))]
-	if len(callExpr.Params) != len(fncNode.Parameters) {
+	if fncNode.Variadic {
+		if len(callExpr.Params) < len(fncNode.Parameters) {
+			a.appendDiagnostic(callExpr.Position(), "function `%s` expects at least %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
+			return nil, false
+		}
+	} else if len(callExpr.Params) != len(fncNode.Parameters) {
 		a.appendDiagnostic(callExpr.Position(), "function `%s` expects %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
 		return nil, false
 	}
-
 	var args []hir.Expr
 	badParam := false
 	for i, p := range callExpr.Params {
@@ -1326,6 +1330,7 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			Name:     node.Name.Value,
 			Id:       id,
 			External: false,
+			Variadic: node.Variadic,
 			Private:  node.Private,
 		})
 		a.functionPositions = append(a.functionPositions, node.Position())
@@ -1341,6 +1346,7 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			Name:     node.Name,
 			Id:       id,
 			External: true,
+			Variadic: node.Variadic,
 			Private:  node.Private,
 		})
 		a.functionPositions = append(a.functionPositions, node.Position())
