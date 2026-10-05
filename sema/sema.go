@@ -1185,6 +1185,8 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 		} else if !a.checkVariadicArg(p.Position(), i, hirExpr.Type()) {
 			badParam = true
 			continue
+		} else {
+			hirExpr = promoteVariadicArg(hirExpr)
 		}
 		args = append(args, hirExpr)
 	}
@@ -1220,6 +1222,27 @@ func (a *Analyzer) checkVariadicArg(pos *util.Position, i int, t hir.Type) bool 
 		return true
 	}
 	return false
+}
+
+// promoteVariadicArg applies C's default argument promotions to an extra argument.
+func promoteVariadicArg(expr hir.Expr) hir.Expr {
+	t := expr.Type()
+	if t.Pointer != 0 {
+		return expr
+	}
+	var target hir.BaseType
+	var kind hir.CastKind
+	switch t.Base {
+	case hir.Bool, hir.Uint8, hir.Uint16:
+		target, kind = hir.Int32, hir.ZeroExtend
+	case hir.Int8, hir.Int16:
+		target, kind = hir.Int32, hir.SignExtend
+	case hir.Float32:
+		target, kind = hir.Float, hir.FloatExtend
+	default:
+		return expr
+	}
+	return &hir.Cast{ExprInfo: hir.Info(target), Kind: kind, Value: expr}
 }
 
 func (a *Analyzer) resolveSymbol(name string) (hir.Symbol, bool) {
