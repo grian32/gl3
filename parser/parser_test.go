@@ -1016,6 +1016,21 @@ func TestStructDeclarationFieldOrder(t *testing.T) {
 	}
 }
 
+func TestIntegerSuffixMustBeAttached(t *testing.T) {
+	tests := map[string]InputOutput{
+		"identifier on next line is not a suffix": {
+			"p += 3\np -= 1i8",
+			"p += 3(Int);p -= 1(Int8);",
+		},
+		"spaced suffix is an identifier": {
+			"3 i32",
+			"3(Int);i32;",
+		},
+	}
+
+	runTests(t, tests)
+}
+
 func TestUnterminatedStringLiteralDoesNotTimeoutRegression(t *testing.T) {
 	tests := map[string]string{
 		"parser nil expr stmt loop regression": `
@@ -1115,8 +1130,9 @@ func TestMalformedParserInput(t *testing.T) {
 		"call assignment target":      {"f() = x", "lhs of assignment"},
 		"call compound target":        {"f() += x", "lhs of assignment"},
 		"literal compound target":     {"1 <<= x", "lhs of assignment"},
-		"unknown integer suffix":      {"1u128", ""},
-		"misspelled integer suffix":   {"1i33", ""},
+		"unknown integer suffix":      {"1u128", "unknown integer literal suffix u128"},
+		"misspelled integer suffix":   {"1i33", "unknown integer literal suffix i33"},
+		"unknown float suffix":        {"1.5abc", "unknown float literal suffix abc"},
 		"unsuffixed overflow":         {"18446744073709551616", `could not parse "18446744073709551616" as integer`},
 		"unsigned overflow":           {"18446744073709551616u64", `could not parse "18446744073709551616" as integer`},
 	}

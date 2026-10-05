@@ -38,29 +38,27 @@ func (p *Parser) parseIntegerLiteral() Expression {
 
 	lit.UValue = uvalue
 
-	p.NextToken()
-	if p.currTokenIs(lexer.IDENTIFIER) {
-		switch p.currToken.Literal {
-		case "i32":
-			lit.Type.Base = lexer.Int32
-		case "i16":
-			lit.Type.Base = lexer.Int16
-		case "i8":
-			lit.Type.Base = lexer.Int8
-		case "u32":
-			lit.Type.Base = lexer.Uint32
-		case "u16":
-			lit.Type.Base = lexer.Uint16
-		case "u8":
-			lit.Type.Base = lexer.Uint8
-		case "u64":
-			lit.Type.Base = lexer.Uint
-		default:
-			lit.Type.Base = lexer.None
-			p.appendError(&p.currToken.Position, "unknown integer literal suffix %s", p.currToken.Literal)
-		}
-		p.NextToken()
+	switch p.currToken.Suffix {
+	case "":
+	case "i32":
+		lit.Type.Base = lexer.Int32
+	case "i16":
+		lit.Type.Base = lexer.Int16
+	case "i8":
+		lit.Type.Base = lexer.Int8
+	case "u32":
+		lit.Type.Base = lexer.Uint32
+	case "u16":
+		lit.Type.Base = lexer.Uint16
+	case "u8":
+		lit.Type.Base = lexer.Uint8
+	case "u64":
+		lit.Type.Base = lexer.Uint
+	default:
+		lit.Type.Base = lexer.None
+		p.appendError(&p.currToken.Position, "unknown integer literal suffix %s", p.currToken.Suffix)
 	}
+	p.NextToken()
 
 	return lit
 }
@@ -81,6 +79,10 @@ func (p *Parser) parseFloatLiteral() Expression {
 	}
 
 	lit.Value = float32(value)
+
+	if p.currToken.Suffix != "" {
+		p.appendError(&p.currToken.Position, "unknown float literal suffix %s", p.currToken.Suffix)
+	}
 	p.NextToken()
 
 	return lit

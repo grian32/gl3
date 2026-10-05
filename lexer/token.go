@@ -288,5 +288,6 @@ type Token struct {
 	Type     TokenType
 	VarType  VarType
 	Literal  string
+	Suffix   string
 	Position util.Position
 }

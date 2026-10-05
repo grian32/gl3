@@ -1,11 +1,24 @@
 // e2e: {"mode":"run","stdout":"3.75\n3\n7.5\n3.75\n"}
-extern fnc malloc(uint size) -> char*
-extern fnc strfromf(char* buf, uint size, char* format, float value) -> int32
-extern fnc puts(char* text) -> int32
+// strfromf is glibc-only, so print floats by hand: sign, whole part, then up to two decimals.
+extern fnc putchar(int32 c) -> int32
+fnc show_digits(int32 value) -> none {
+    if value >= 10i32 { show_digits(value / 10i32) }
+    putchar(48i32 + value % 10i32)
+}
 fnc show(float value) -> none {
-    def char* buf = malloc(32u64)
-    strfromf(buf, 32u64, "%g", value)
-    puts(buf)
+    if value < 0.0 {
+        putchar(45i32)
+        value = -value
+    }
+    def int32 scaled = (value * 100.0 + 0.5) as int32
+    show_digits(scaled / 100i32)
+    def int32 frac = scaled % 100i32
+    if frac != 0i32 {
+        putchar(46i32)
+        putchar(48i32 + frac / 10i32)
+        if frac % 10i32 != 0i32 { putchar(48i32 + frac % 10i32) }
+    }
+    putchar(10i32)
 }
 fnc main() -> int32 {
     def float x = 1.5

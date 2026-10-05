@@ -154,6 +154,7 @@ func (l *Lexer) NextToken() Token {
 				EndLine:   l.currLine,
 			}
 			tok.Literal = l.readHexaInt()
+			tok.Suffix = l.readSuffix()
 			tok.Type = INT
 			tok.Position.EndCol = l.currCh
 			return tok
@@ -166,6 +167,7 @@ func (l *Lexer) NextToken() Token {
 				EndLine:   l.currLine,
 			}
 			tok.Literal, tok.Type = l.readNumber()
+			tok.Suffix = l.readSuffix()
 			tok.Position.EndCol = l.currCh
 			return tok
 		}
@@ -246,6 +248,14 @@ func (l *Lexer) readString() string {
 	}
 
 	return string(buf)
+}
+
+func (l *Lexer) readSuffix() string {
+	start := l.pos
+	for util.IsAlphaNumeric(l.ch) {
+		l.readChar()
+	}
+	return l.input[start:l.pos]
 }
 
 func (l *Lexer) readHexaInt() string {
