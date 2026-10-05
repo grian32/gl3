@@ -380,6 +380,8 @@ func identLookup(lit string) (TokenType, BaseVarType) {
 		return AS, None
 	case "sizeof":
 		return SIZEOF, None
+	case "vararg":
+		return VARARG, None
 	case "import":
 		return IMPORT, None
 	case "char":

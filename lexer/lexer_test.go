@@ -74,6 +74,14 @@ func TestOperatorTokenPosition(t *testing.T) {
 	}
 }
 
+func TestVarargKeyword(t *testing.T) {
+	got, literals := lexTypes("vararg int32 varargs")
+	want := []TokenType{VARARG, TYPE, IDENTIFIER}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v (%q), want %v", got, literals, want)
+	}
+}
+
 func TestDotTokens(t *testing.T) {
 	tests := []struct {
 		src  string

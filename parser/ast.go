@@ -464,6 +464,20 @@ func (se *SizeofExpression) Position() *util.Position {
 	return &se.position
 }
 
+// VarargExpression reads the next variadic argument as Type.
+type VarargExpression struct {
+	Token    lexer.Token
+	Type     lexer.VarType
+	position util.Position
+}
+
+func (ve *VarargExpression) expressionNode()      { /* noop */ }
+func (ve *VarargExpression) TokenLiteral() string { return ve.Token.Literal }
+func (ve *VarargExpression) String() string       { return "vararg " + ve.Type.String() }
+func (ve *VarargExpression) Position() *util.Position {
+	return &ve.position
+}
+
 type ArrayLiteral struct {
 	Token    lexer.Token
 	Type     lexer.VarType

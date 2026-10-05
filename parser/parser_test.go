@@ -890,6 +890,45 @@ func TestSizeofExpression(t *testing.T) {
 	runTests(t, tests)
 }
 
+func TestVarargExpression(t *testing.T) {
+	tests := map[string]InputOutput{
+		"vararg builtin type": {
+			"vararg int32",
+			"vararg Int32;",
+		},
+		"vararg pointer": {
+			"vararg char*",
+			"vararg Char*;",
+		},
+		"vararg struct": {
+			"vararg Node*",
+			"vararg Node*;",
+		},
+		"vararg def": {
+			"def int32 x = vararg int32",
+			"def Int32 x = vararg Int32;",
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestVarargPrecedence(t *testing.T) {
+	tests := []InputOutput{
+		{"vararg int32 + n", "+(vararg(Int32), n)"},
+		{"n + vararg int32", "+(n, vararg(Int32))"},
+		{"vararg int32 * *", "vararg(Int32**)"},
+		{"(vararg int32) * n", "*(vararg(Int32), n)"},
+		{"n * vararg int32", "*(n, vararg(Int32))"},
+		{"-vararg int32", "prefix(-, vararg(Int32))"},
+		{"vararg int32 as uint", "cast(Uint, vararg(Int32))"},
+		{"vararg int32 < n", "<(vararg(Int32), n)"},
+		{"f(vararg char*, vararg int)", "call(f, vararg(Char*), vararg(Int))"},
+	}
+
+	runExpressionShapeTests(t, tests)
+}
+
 func TestSizeofPrecedence(t *testing.T) {
 	tests := []InputOutput{
 		{"sizeof Node", "sizeof(Node)"},
@@ -1215,6 +1254,8 @@ func TestMalformedParserInput(t *testing.T) {
 		"missing initializer brace":   {"S:{a", ""},
 		"missing array bracket":       {"[int; a", "]"},
 		"missing binary operand":      {"a +", "no prefix"},
+		"vararg missing type":         {"vararg", "expected type after vararg"},
+		"vararg non type":             {"vararg 1", "expected type after vararg"},
 		"missing prefix operand":      {"!", "no prefix"},
 		"missing assignment operand":  {"a =", "no prefix"},
 		"missing reference operand":   {"&", ""},
@@ -1437,6 +1478,8 @@ func expressionShape(t *testing.T, expr Expression) string {
 		return fmt.Sprintf("cast(%s, %s)", e.Type, shape(e.Expr))
 	case *SizeofExpression:
 		return "sizeof(" + e.Type.String() + ")"
+	case *VarargExpression:
+		return "vararg(" + e.Type.String() + ")"
 	case *PrefixExpression:
 		return fmt.Sprintf("prefix(%s, %s)", e.Operator, shape(e.Right))
 	case *DereferenceExpression:

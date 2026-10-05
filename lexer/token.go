@@ -58,6 +58,7 @@ const (
 	GTEQ
 	AS
 	SIZEOF
+	VARARG
 	LBRACKET
 	RBRACKET
 	IMPORT
@@ -182,6 +183,8 @@ func (tt TokenType) String() string {
 		return "FLOAT"
 	case SIZEOF:
 		return "SIZEOF"
+	case VARARG:
+		return "VARARG"
 	case LBRACKET:
 		return "["
 	case RBRACKET:

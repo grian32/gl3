@@ -54,3 +54,22 @@ func (p *Parser) parseSizeofExpression() Expression {
 
 	return expr
 }
+
+func (p *Parser) parseVarargExpression() Expression {
+	expr := &VarargExpression{Token: p.currToken, position: util.Position{
+		StartLine: p.currToken.Position.StartLine,
+		StartCol:  p.currToken.Position.StartCol,
+	}}
+	p.NextToken() // past vararg
+	vt, ok := p.parseType()
+	if !ok {
+		expr.Position().CopyEnd(&p.currToken.Position)
+		p.appendError(&expr.position, "expected type after vararg keyword")
+		return nil
+	}
+
+	expr.Type = vt
+	expr.Position().CopyEnd(&p.currToken.Position)
+
+	return expr
+}

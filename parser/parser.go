@@ -102,6 +102,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.prefixParseFns[lexer.NOT] = p.parsePrefixExpression
 	p.prefixParseFns[lexer.TILDE] = p.parsePrefixExpression
 	p.prefixParseFns[lexer.SIZEOF] = p.parseSizeofExpression
+	p.prefixParseFns[lexer.VARARG] = p.parseVarargExpression
 	p.prefixParseFns[lexer.LBRACKET] = p.parseArrayLiteral
 	p.prefixParseFns[lexer.CHAR] = p.parseCharLiteral
 
