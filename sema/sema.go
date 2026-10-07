@@ -1424,6 +1424,9 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			Variadic: node.Variadic,
 			Private:  node.Private,
 		})
+		if node.Variadic {
+			a.containsVariadic = true
+		}
 		a.functionPositions = append(a.functionPositions, node.Position())
 		a.functionBodies = append(a.functionBodies, node.Body)
 		a.Symbols[node.Name.Value] = id

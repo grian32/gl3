@@ -326,6 +326,7 @@ func (imports *moduleImports) addFunctions(functions []hir.Function, structIDs m
 			ParameterNames: maps.Clone(source.ParameterNames),
 			ReturnType:     returnType,
 			External:       true,
+			Variadic:       source.Variadic,
 		})
 		if err := imports.addSymbol(source.Name, id); err != nil {
 			return err
