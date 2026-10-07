@@ -66,9 +66,10 @@ type Global struct {
 }
 
 type Program struct {
-	Structs   []Struct
-	Functions []Function
-	Globals   []Global
+	Structs          []Struct
+	Functions        []Function
+	Globals          []Global
+	ContainsVariadic bool
 }
 
 type Local struct {

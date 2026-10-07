@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"gl3/hir"
+	"strings"
 	"sync"
 
-	"tinygo.org/x/go-llvm"
 	llvmapi "tinygo.org/x/go-llvm"
 )
 
@@ -25,6 +25,11 @@ type Emitter struct {
 
 	locals []llvmapi.Value
 	loops  []loopBlocks
+
+	containsVariadic bool
+	vaStart          llvmapi.Value
+	vaEnd            llvmapi.Value
+	vaList           llvmapi.Type
 }
 
 type loopBlocks struct {
@@ -82,16 +87,17 @@ func New(program *hir.Program, moduleName string, optimization int) (*Emitter, e
 	module.SetDataLayout(data.String())
 
 	return &Emitter{
-		program:      program,
-		context:      context,
-		module:       module,
-		builder:      context.NewBuilder(),
-		target:       machine,
-		targetData:   data,
-		optimization: optimization,
-		structs:      make([]llvmapi.Type, len(program.Structs)),
-		functions:    make([]llvmapi.Value, len(program.Functions)),
-		globals:      make([]llvmapi.Value, len(program.Globals)),
+		program:          program,
+		context:          context,
+		module:           module,
+		builder:          context.NewBuilder(),
+		target:           machine,
+		targetData:       data,
+		optimization:     optimization,
+		containsVariadic: program.ContainsVariadic,
+		structs:          make([]llvmapi.Type, len(program.Structs)),
+		functions:        make([]llvmapi.Value, len(program.Functions)),
+		globals:          make([]llvmapi.Value, len(program.Globals)),
 	}, nil
 }
 
@@ -108,6 +114,30 @@ func (e *Emitter) Module() llvmapi.Module {
 }
 
 func (e *Emitter) Emit() error {
+	if e.containsVariadic {
+		vaType := llvmapi.FunctionType(e.context.VoidType(), []llvmapi.Type{llvmapi.PointerType(e.context.Int8Type(), 0)}, false)
+		e.vaEnd = llvmapi.AddFunction(e.module, "llvm.va_end.p0", vaType)
+		e.vaStart = llvmapi.AddFunction(e.module, "llvm.va_start.p0", vaType)
+
+		triple := e.module.Target()
+		ptr := llvmapi.PointerType(e.context.Int8Type(), 0)
+		i32 := e.context.Int32Type()
+
+		// targets not listed use a plain pointer
+		vaListFields := []llvmapi.Type{ptr}
+		if !strings.Contains(triple, "windows") && !strings.Contains(triple, "apple") && !strings.Contains(triple, "darwin") {
+			switch {
+			case strings.HasPrefix(triple, "x86_64"):
+				vaListFields = []llvmapi.Type{i32, i32, ptr, ptr}
+			case strings.HasPrefix(triple, "aarch64"), strings.HasPrefix(triple, "arm64"):
+				vaListFields = []llvmapi.Type{ptr, ptr, ptr, i32, i32}
+			}
+		}
+
+		e.vaList = e.context.StructCreateNamed("va_list")
+		e.vaList.StructSetBody(vaListFields, false)
+	}
+
 	for _, s := range e.program.Structs {
 		err := e.declareStruct(&s)
 		if err != nil {
@@ -156,7 +186,7 @@ func (e *Emitter) declareStruct(s *hir.Struct) error {
 }
 
 func (e *Emitter) defineStruct(s *hir.Struct) error {
-	fieldTypes := []llvm.Type{}
+	fieldTypes := []llvmapi.Type{}
 	for _, f := range s.Fields {
 		lowered, err := e.lowerType(f.Type)
 		if err != nil {
@@ -183,7 +213,7 @@ func (e *Emitter) declareFunction(function *hir.Function) error {
 		return err
 	}
 
-	e.functions[function.Id] = llvmapi.AddFunction(e.module, function.Name, llvmapi.FunctionType(loweredRet, paramTypes, false))
+	e.functions[function.Id] = llvmapi.AddFunction(e.module, function.Name, llvmapi.FunctionType(loweredRet, paramTypes, function.Variadic))
 	return nil
 }
 

@@ -34,6 +34,8 @@ type Analyzer struct {
 	currentFunction *hir.Function
 	loopDepth       int
 
+	containsVariadic bool
+
 	diagnostics []Diagnostic
 }
 
@@ -50,6 +52,7 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 	a.functionBodies = make([]*parser.BlockStatement, a.importedFunctions)
 	a.globalPositions = make([]*util.Position, a.importedGlobals)
 	a.globalInitializers = make([]parser.Expression, a.importedGlobals)
+	a.containsVariadic = false
 
 	// pass 1.0 assigns ids to Functions/Structs/Globals
 	if !a.assignIDs(program) {
@@ -83,9 +86,10 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 
 end:
 	return &hir.Program{
-		Structs:   a.Structs,
-		Functions: a.Functions,
-		Globals:   a.Globals,
+		Structs:          a.Structs,
+		Functions:        a.Functions,
+		Globals:          a.Globals,
+		ContainsVariadic: a.containsVariadic,
 	}, a.diagnostics
 }
 
@@ -1164,6 +1168,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 			a.appendDiagnostic(callExpr.Position(), "function `%s` expects at least %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
 			return nil, false
 		}
+		a.containsVariadic = true
 	} else if len(callExpr.Params) != len(fncNode.Parameters) {
 		a.appendDiagnostic(callExpr.Position(), "function `%s` expects %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
 		return nil, false
