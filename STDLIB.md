@@ -161,11 +161,11 @@ Low-level heap allocation functions that vendor C's `malloc`, `calloc`, and `fre
 
 ### Functions
 
-| Function               | Parameters                     | Returns | Description |
-|------------------------|--------------------------------|---------|-------------|
-| `malloc(size)`         | int (bytes)                    | void*   | Allocate `size` bytes (uninitialized) |
-| `calloc(count, size)`  | int (count), int (bytes each)  | void*   | Allocate `count * size` bytes, zero-initialized |
-| `free(ptr)`            | void*                          | none    | Free memory previously allocated by `malloc`/`calloc` |
+| Function               | Parameters                       | Returns | Description |
+|------------------------|----------------------------------|---------|-------------|
+| `malloc(size)`         | uint (bytes)                     | none*   | Allocate `size` bytes (uninitialized) |
+| `calloc(count, size)`  | uint (count), uint (bytes each)  | none*   | Allocate `count * size` bytes, zero-initialized |
+| `free(ptr)`            | none*                            | none    | Free memory previously allocated by `malloc`/`calloc` |
 
 ### Usage
 
@@ -173,7 +173,7 @@ Low-level heap allocation functions that vendor C's `malloc`, `calloc`, and `fre
 import "ralloc"
 
 fnc main() -> int32 {
-    def int count = 4
+    def uint count = 4u64
 
     // malloc: allocate raw bytes, then cast to a typed pointer
     def int32* values = malloc((sizeof int32) * count) as int32*
@@ -184,8 +184,8 @@ fnc main() -> int32 {
     def int32* zeros = calloc(count, sizeof int32) as int32*
     zeros[2] = 7i32
 
-    free(values)
-    free(zeros)
+    free(values as none*)
+    free(zeros as none*)
 
     return 0i32
 }
@@ -194,7 +194,8 @@ fnc main() -> int32 {
 ### Notes
 
 - `ralloc` is intentionally low-level and does not track element counts or types.
-- Always cast returned `void*` to the pointer type you want to use.
+- Always cast returned `none*` to the pointer type you want to use, and cast back to `none*` when freeing.
+- Sizes are `uint`, matching the type of `sizeof`.
 - Pair every successful `malloc`/`calloc` with exactly one `free`.
 
 ## io - Formatted Output

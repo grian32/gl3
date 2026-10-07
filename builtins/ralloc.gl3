@@ -1,0 +1,3 @@
+extern fnc malloc(uint size) -> none*
+extern fnc calloc(uint count, uint size) -> none*
+extern fnc free(none* ptr) -> none
