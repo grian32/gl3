@@ -1238,8 +1238,10 @@ func promoteVariadicArg(expr hir.Expr) hir.Expr {
 		return expr
 	}
 	switch t.Base {
-	case hir.Bool, hir.Uint8, hir.Uint16:
+	case hir.Int8, hir.Int16:
 		return &hir.Cast{ExprInfo: hir.Info(hir.Int32), Kind: hir.SignExtend, Value: expr}
+	case hir.Bool, hir.Uint8, hir.Uint16:
+		return &hir.Cast{ExprInfo: hir.Info(hir.Int32), Kind: hir.ZeroExtend, Value: expr}
 	case hir.Float32:
 		return &hir.Cast{ExprInfo: hir.Info(hir.Float), Kind: hir.FloatExtend, Value: expr}
 	}
