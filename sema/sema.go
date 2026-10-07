@@ -326,7 +326,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		if !a.isSized(defType, make(map[hir.StructID]struct{})) {
+		if !a.isSized(defType) {
 			a.appendDiagnostic(stmt.Position(), "unsized and none types are not allowed for local declarations for variable `%s`.", stmt.Name)
 			return nil, false
 		}
@@ -458,7 +458,7 @@ func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiter
 		a.appendDiagnostic(expr.Position(), "invalid array element type `%s`", expr.Type)
 		return nil, false
 	}
-	if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
+	if !a.isSized(elementType) {
 		a.appendDiagnostic(expr.Position(), "array element type `%s` must be sized", elementType)
 		return nil, false
 	}
@@ -594,7 +594,7 @@ func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool
 		a.appendDiagnostic(expr.Position(), "invalid type for sizeof")
 		return nil, false
 	}
-	if !a.isSized(t, make(map[hir.StructID]struct{})) {
+	if !a.isSized(t) {
 		a.appendDiagnostic(expr.Position(), "sizeof unsized type is not allowed")
 		return nil, false
 	}
@@ -617,7 +617,7 @@ func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpressio
 		return nil, false
 	}
 	s := a.Structs[structId]
-	if s.Opaque || !a.isSized(hir.Type{Base: hir.StructType, Struct: structId}, make(map[hir.StructID]struct{})) {
+	if s.Unsized {
 		a.appendDiagnostic(expr.Position(), "struct literals for unsized or opaque structs are not allowed")
 		return nil, false
 	}
@@ -682,7 +682,7 @@ func (a *Analyzer) checkDeref(expr *parser.DereferenceExpression) (*hir.Derefere
 	}
 	t.Pointer--
 
-	if !a.isSized(t, make(map[hir.StructID]struct{})) {
+	if !a.isSized(t) {
 		a.appendDiagnostic(expr.Position(), "cannot dereference unsized type `%s`", t)
 		return nil, false
 	}
@@ -863,7 +863,7 @@ func (a *Analyzer) binaryOp(pos, rightPos *util.Position, operator string, leftT
 
 		elementType := leftType
 		elementType.Pointer--
-		if !a.isSized(elementType, make(map[hir.StructID]struct{})) {
+		if !a.isSized(elementType) {
 			if elementType.Base == hir.StructType && a.Structs[elementType.Struct].Opaque {
 				a.appendDiagnostic(pos, "pointer arithmetic requires a sized element type; struct `%s` is opaque", a.Structs[elementType.Struct].Name)
 			} else {
@@ -1029,7 +1029,7 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (hir
 	if !ok {
 		return nil, false
 	}
-	if !a.isSized(place.Type(), make(map[hir.StructID]struct{})) {
+	if !a.isSized(place.Type()) {
 		a.appendDiagnostic(assignExpr.Position(), "cannot assign to unsized type `%s`.", place.Type())
 		return nil, false
 	}
@@ -1202,7 +1202,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 		return nil, false
 	}
 
-	if (fncNode.ReturnType.Base != hir.Void || fncNode.ReturnType.Pointer != 0) && !a.isSized(fncNode.ReturnType, make(map[hir.StructID]struct{})) {
+	if (fncNode.ReturnType.Base != hir.Void || fncNode.ReturnType.Pointer != 0) && !a.isSized(fncNode.ReturnType) {
 		a.appendDiagnostic(callExpr.Position(), "cannot call function with unsized return type.")
 		return nil, false
 	}
@@ -1574,24 +1574,24 @@ func (a *Analyzer) populateFieldsFunctions(node parser.Node) bool {
 func (a *Analyzer) checkSizedDeclarations() bool {
 	for i := range a.Structs {
 		s := &a.Structs[i]
-		s.Unsized = !a.isSized(hir.Type{Base: hir.StructType, Struct: s.Id}, map[hir.StructID]struct{}{})
+		s.Unsized = !a.computeSized(hir.Type{Base: hir.StructType, Struct: s.Id}, map[hir.StructID]struct{}{})
 	}
 
 	for _, fnc := range a.Functions {
 		for _, p := range fnc.Parameters {
-			if !a.isSized(p.Type, map[hir.StructID]struct{}{}) {
+			if !a.isSized(p.Type) {
 				a.appendDiagnostic(a.functionPositions[fnc.Id], "unsized type is not allowed for parameter `%s` in function `%s`; use a pointer", p.Name, fnc.Name)
 				return false
 			}
 		}
-		if !fnc.External && fnc.ReturnType.Base != hir.Void && !a.isSized(fnc.ReturnType, map[hir.StructID]struct{}{}) {
+		if !fnc.External && fnc.ReturnType.Base != hir.Void && !a.isSized(fnc.ReturnType) {
 			a.appendDiagnostic(a.functionPositions[fnc.Id], "unsized return type is not allowed for function `%s`; use a pointer", fnc.Name)
 			return false
 		}
 	}
 
 	for _, g := range a.Globals {
-		if !a.isSized(g.Type, map[hir.StructID]struct{}{}) {
+		if !a.isSized(g.Type) {
 			a.appendDiagnostic(a.globalPositions[g.Id], "unsized type is not allowed for global `%s`; use a pointer", g.Name)
 			return false
 		}
@@ -1656,7 +1656,17 @@ func (a *Analyzer) functionRetType(retType lexer.VarType, position *util.Positio
 	return rt, true
 }
 
-func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{}) bool {
+func (a *Analyzer) isSized(t hir.Type) bool {
+	if t.Pointer > 0 {
+		return true
+	}
+	if t.Base == hir.StructType {
+		return !a.Structs[t.Struct].Unsized
+	}
+	return t.Base != hir.Void
+}
+
+func (a *Analyzer) computeSized(t hir.Type, visitedStructs map[hir.StructID]struct{}) bool {
 	if t.Pointer > 0 {
 		return true
 	}
@@ -1677,7 +1687,7 @@ func (a *Analyzer) isSized(t hir.Type, visitedStructs map[hir.StructID]struct{})
 			defer delete(visitedStructs, t.Struct)
 
 			for _, f := range a.Structs[t.Struct].Fields {
-				if !a.isSized(f.Type, visitedStructs) {
+				if !a.computeSized(f.Type, visitedStructs) {
 					return false
 				}
 			}

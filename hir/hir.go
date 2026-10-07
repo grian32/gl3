@@ -38,7 +38,7 @@ type Struct struct {
 	Fields     []TypedName
 	FieldNames map[string]int
 	Opaque     bool
-	Unsized    bool // Populated by pass 1.2; includes indirect fields and by-value cycles.
+	Unsized    bool // Populated by pass 1.3; includes indirect fields and by-value cycles.
 	// only Opaque structs can be Private
 	Private bool
 }
