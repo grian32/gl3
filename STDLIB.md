@@ -1,39 +1,5 @@
 # GL3 Standard Library
 
-## dbg - Debug Output
-
-Debugging functions for development. These print values to standard output.
-
-| Function       | Argument Type | Description          |
-|----------------|---------------|----------------------|
-| `dbg_i64(x)`   | int           | Print int64 value    |
-| `dbg_i32(x)`   | int32         | Print int32 value    |
-| `dbg_i16(x)`   | int16         | Print int16 value    |
-| `dbg_i8(x)`    | int8          | Print int8 value     |
-| `dbg_u64(x)`   | uint          | Print uint64 value   |
-| `dbg_u32(x)`   | uint32        | Print uint32 value   |
-| `dbg_u16(x)`   | uint16        | Print uint16 value   |
-| `dbg_u8(x)`    | uint8         | Print uint8 value    |
-| `dbg_float(x)` | float         | Print float value    |
-| `dbg_bool(x)`  | bool          | Print boolean value  |
-| `dbg_str(x)`   | char*         | Print string         |
-| `dbg_char(x)`  | char          | Print char value     |
-
-Usage:
-
-```gl3
-import "dbg"
-
-fnc main() -> int32 {
-    dbg_str("starting program")
-    dbg_i32(42i32)
-    dbg_bool(true)
-    return 0i32
-}
-```
-
-This module is intended for internal debugging use and may not be included in future releases.
-
 ## arrays - Dynamic Arrays
 
 Dynamic heap-allocated arrays with automatic resizing.
