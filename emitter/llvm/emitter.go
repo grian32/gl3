@@ -30,6 +30,7 @@ type Emitter struct {
 	vaStart          llvmapi.Value
 	vaEnd            llvmapi.Value
 	vaList           llvmapi.Type
+	currVaList       llvmapi.Value
 }
 
 type loopBlocks struct {
@@ -242,6 +243,11 @@ func (e *Emitter) emitFunction(function *hir.Function) error {
 	f := e.functions[function.Id]
 	block := llvmapi.AddBasicBlock(f, "body")
 	e.builder.SetInsertPointAtEnd(block)
+	e.currVaList = llvmapi.Value{}
+	if function.Variadic {
+		e.currVaList = e.builder.CreateAlloca(e.vaList, "ap")
+		e.builder.CreateCall(e.vaStart.GlobalValueType(), e.vaStart, []llvmapi.Value{e.currVaList}, "")
+	}
 
 	e.locals = make([]llvmapi.Value, len(function.Locals))
 	for i, local := range function.Locals {
@@ -262,6 +268,7 @@ func (e *Emitter) emitFunction(function *hir.Function) error {
 	}
 
 	if fallsThrough && function.ReturnType.Base == hir.Void && function.ReturnType.Pointer == 0 {
+		e.emitVaEnd()
 		e.builder.CreateRetVoid()
 	}
 
@@ -279,6 +286,12 @@ func (e *Emitter) emitBlock(block *hir.Block) (bool, error) {
 	return true, nil
 }
 
+func (e *Emitter) emitVaEnd() {
+	if !e.currVaList.IsNil() {
+		e.builder.CreateCall(e.vaEnd.GlobalValueType(), e.vaEnd, []llvmapi.Value{e.currVaList}, "")
+	}
+}
+
 func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 	switch stmt := stmt.(type) {
 	case *hir.LocalDeclaration:
@@ -290,6 +303,7 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		return true, nil
 	case *hir.Return:
 		if stmt.Value == nil {
+			e.emitVaEnd()
 			e.builder.CreateRetVoid()
 			return false, nil
 		}
@@ -297,6 +311,7 @@ func (e *Emitter) emitStmt(stmt hir.Stmt) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		e.emitVaEnd()
 		e.builder.CreateRet(value)
 		return false, nil
 	case *hir.ExpressionStatement:
@@ -574,6 +589,12 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		e.builder.CreateStore(result, addr)
 		return result, nil
+	case *hir.Vararg:
+		t, err := e.lowerType(expr.ResultType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		return e.builder.CreateVAArg(e.currVaList, t, ""), nil
 	}
 	panic("emitter: emitExpr not implemented")
 }
