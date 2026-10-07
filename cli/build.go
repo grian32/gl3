@@ -4,9 +4,11 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	llvmemitter "gl3/emitter/llvm"
 	"gl3/hir"
@@ -37,6 +39,7 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 	}
 
 	ctx := &buildContext{
+		builtinFs: builtinFs,
 		compiled:  make(map[string]*compiledModule),
 		compiling: make(map[string]bool),
 	}
@@ -131,7 +134,10 @@ func newModuleImports() *moduleImports {
 	}
 }
 
+const builtinPrefix = "builtin:"
+
 type buildContext struct {
+	builtinFs embed.FS
 	compiled  map[string]*compiledModule
 	compiling map[string]bool
 	order     []*compiledModule
@@ -150,7 +156,38 @@ func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error
 	if err != nil {
 		return nil, err
 	}
+	input, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.compileModule(absPath, string(input))
+}
 
+// compileBuiltin compiles builtins/<name>.gl3 from the embedded stdlib.
+func (ctx *buildContext) compileBuiltin(name string) (*compiledModule, error) {
+	input, err := ctx.builtinFs.ReadFile("builtins/" + name + ".gl3")
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("unknown builtin module %q", name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ctx.compileModule(builtinPrefix+name, string(input))
+}
+
+func (ctx *buildContext) compileImport(from string, path string) (*compiledModule, error) {
+	if !strings.HasSuffix(path, ".gl3") {
+		return ctx.compileBuiltin(path)
+	}
+	if strings.HasPrefix(from, builtinPrefix) {
+		return nil, errors.New("builtin modules can only import other builtins")
+	}
+	return ctx.compileGl3File(filepath.Join(filepath.Dir(from), path))
+}
+
+// NOTE: callers read the source before the cache check, so a module imported
+// from multiple files is re-read each time; negligible, but keep in mind.
+func (ctx *buildContext) compileModule(absPath string, input string) (*compiledModule, error) {
 	if module, ok := ctx.compiled[absPath]; ok {
 		return module, nil
 	}
@@ -160,12 +197,7 @@ func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error
 	ctx.compiling[absPath] = true
 	defer delete(ctx.compiling, absPath)
 
-	input, err := os.ReadFile(absPath)
-	if err != nil {
-		return nil, err
-	}
-
-	l := lexer.New(string(input))
+	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
 	if len(p.Errors) != 0 {
@@ -183,9 +215,7 @@ func (ctx *buildContext) compileGl3File(filePath string) (*compiledModule, error
 			continue
 		}
 
-		importPath := filepath.Join(filepath.Dir(absPath), imp.Path)
-
-		compModule, err := ctx.compileGl3File(importPath)
+		compModule, err := ctx.compileImport(absPath, imp.Path)
 		if err != nil {
 			return nil, fmt.Errorf("%s:%d:%d: import %q: %w", absPath, imp.Position().StartLine, imp.Position().StartCol, imp.Path, err)
 		}
