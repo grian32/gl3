@@ -608,7 +608,7 @@ func (a *Analyzer) checkSizeof(expr *parser.SizeofExpression) (*hir.Sizeof, bool
 func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpression) (*hir.StructLiteral, bool) {
 	symbol, ok := a.Symbols[expr.Name]
 	if !ok {
-		a.appendDiagnostic(expr.Position(), "symbol does not exist")
+		a.appendDiagnostic(expr.Position(), "struct `%s` does not exist", expr.Name)
 		return nil, false
 	}
 	structId, ok := symbol.(hir.StructID)
@@ -1393,7 +1393,7 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			Name:    node.Name,
 			Id:      id,
 			Opaque:  false,
-			Private: false,
+			Private: node.Private,
 		})
 		a.structPositions = append(a.structPositions, node.Position())
 		a.Symbols[node.Name] = id

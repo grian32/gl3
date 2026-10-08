@@ -43,11 +43,11 @@ func (p *Parser) parseExternStatement(private bool) Statement {
 	return nil
 }
 
-func (p *Parser) parseStructStatement() Statement {
+func (p *Parser) parseStructStatement(private bool) Statement {
 	stmt := &StructStatement{Token: p.currToken, position: util.Position{
 		StartLine: p.currToken.Position.StartLine,
 		StartCol:  p.currToken.Position.StartCol,
-	}}
+	}, Private: private}
 	p.NextToken()
 	if !p.currTokenIs(lexer.IDENTIFIER) {
 		p.appendError(&p.currToken.Position, "expected identifier after struct keyword")

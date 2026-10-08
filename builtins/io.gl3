@@ -2,7 +2,7 @@ private extern fnc putchar(int32 c) -> int32
 
 // kind is the specifier letter ('b', 'c', 's', or 'i' for integers), 0 once fmt ends.
 // width is y, w, d, l; 8, 16, 32, 64
-struct IoSpec {
+private struct Spec {
     char kind
     bool show_suffix
     bool is_unsigned
@@ -53,7 +53,7 @@ private fnc format_suffix(char width, bool is_unsigned) -> char* {
 // gl3 can't pass the varargs on to a vprint, so this prints fmt up to the next
 // specifier and returns it; print/println read the vararg and dispatch on it.
 // The order of the specifiers must be 'f', and then 'u', and then the width specifier.
-private fnc next_spec(char** fmt) -> IoSpec {
+private fnc next_spec(char** fmt) -> Spec {
     while **fmt != 0i8 {
         if **fmt != '%' {
             put(**fmt);
@@ -71,10 +71,10 @@ private fnc next_spec(char** fmt) -> IoSpec {
 
         if c == 'b' || c == 'c' || c == 's' {
             *fmt += 1u64
-            return IoSpec:{ c, false, false, 0i8 }
+            return Spec:{ c, false, false, 0i8 }
         }
 
-        def IoSpec spec = IoSpec:{ 'i', false, false, 0i8 }
+        def Spec spec = Spec:{ 'i', false, false, 0i8 }
         if **fmt == 'f' {
             spec.show_suffix = true;
             *fmt += 1u64
@@ -98,7 +98,7 @@ private fnc next_spec(char** fmt) -> IoSpec {
         }
     }
 
-    return IoSpec:{ 0i8, false, false, 0i8 }
+    return Spec:{ 0i8, false, false, 0i8 }
 }
 
 // Prints a formatted string to stdout.
@@ -108,7 +108,7 @@ private fnc next_spec(char** fmt) -> IoSpec {
 //
 // Examples: %fud = format specifier at the end, unsigned, 32-bit integer
 fnc print(char* fmt, ...) -> none {
-    def IoSpec spec = next_spec(&fmt)
+    def Spec spec = next_spec(&fmt)
     while spec.kind != 0i8 {
         if spec.kind == 'b' {
             if vararg bool { put_str("true") } else { put_str("false") }
@@ -135,7 +135,7 @@ fnc print(char* fmt, ...) -> none {
 }
 
 fnc println(char* fmt, ...) -> none {
-    def IoSpec spec = next_spec(&fmt)
+    def Spec spec = next_spec(&fmt)
     while spec.kind != 0i8 {
         if spec.kind == 'b' {
             if vararg bool { put_str("true") } else { put_str("false") }

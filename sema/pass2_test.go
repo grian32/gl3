@@ -222,7 +222,7 @@ fnc size() -> uint { return sizeof Handle }`, diagnostics: []expectedDiagnostic{
 fnc read(Handle* handle) -> int32 { return (*handle).value }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"cannot dereference", "unsized type", "struct#0"}, line: 2}}},
 	{name: "unknown struct literal", source: `fnc sample() -> none {
  Missing:{1i32}
-}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"symbol does not exist"}, line: 2}}},
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"struct `Missing` does not exist"}, line: 2}}},
 	{name: "nested struct runtime initializer", source: `struct Inner { int32 x }
 struct Outer { Inner inner }
 fnc runtime() -> int32 { return 7i32 }

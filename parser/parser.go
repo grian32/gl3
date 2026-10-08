@@ -178,7 +178,7 @@ func (p *Parser) parseStatement() Statement {
 	case lexer.WHILE:
 		return p.parseWhileStatement()
 	case lexer.STRUCT:
-		return p.parseStructStatement()
+		return p.parseStructStatement(false)
 	case lexer.BREAK:
 		return p.parseBreakStatement()
 	case lexer.CONTINUE:
@@ -192,6 +192,8 @@ func (p *Parser) parseStatement() Statement {
 			return p.parseFunctionStatement(true)
 		case lexer.EXTERN:
 			return p.parseExternStatement(true)
+		case lexer.STRUCT:
+			return p.parseStructStatement(true)
 		}
 	}
 

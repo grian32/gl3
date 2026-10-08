@@ -593,6 +593,7 @@ type StructStatement struct {
 	Token    lexer.Token
 	Name     string
 	Fields   []StructField
+	Private  bool
 	position util.Position
 }
 
@@ -600,6 +601,9 @@ func (ss *StructStatement) statementNode()       { /* noop */ }
 func (ss *StructStatement) TokenLiteral() string { return ss.Token.Literal }
 func (ss *StructStatement) String() string {
 	var out bytes.Buffer
+	if ss.Private {
+		out.WriteString("private ")
+	}
 	out.WriteString("struct ")
 	out.WriteString(ss.Name)
 	out.WriteString("{")
