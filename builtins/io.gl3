@@ -1,0 +1,163 @@
+private extern fnc putchar(int32 c) -> int32
+
+// kind is the specifier letter ('b', 'c', 's', or 'i' for integers), 0 once fmt ends.
+// width is y, w, d, l; 8, 16, 32, 64
+struct IoSpec {
+    char kind
+    bool show_suffix
+    bool is_unsigned
+    char width
+}
+
+private fnc put(char c) -> none {
+    putchar(c as int32)
+}
+
+private fnc put_str(char* s) -> none {
+    while *s != 0i8 {
+        put(*s)
+        s += 1u64
+    }
+}
+
+private fnc print_uint(uint val) -> none {
+    if val >= 10u64 {
+        print_uint(val / 10u64)
+    }
+    put('0' + ((val % 10u64) as char))
+}
+
+private fnc print_int(int val) -> none {
+    if val < 0 {
+        put('-')
+        val = -val
+    }
+    print_uint(val as uint)
+}
+
+private fnc format_suffix(char width, bool is_unsigned) -> char* {
+    if is_unsigned {
+        if width == 'y' { return "u8" }
+        if width == 'w' { return "u16" }
+        if width == 'd' { return "u32" }
+        if width == 'l' { return "u64" }
+        return ""
+    }
+    if width == 'y' { return "i8" }
+    if width == 'w' { return "i16" }
+    if width == 'd' { return "i32" }
+    if width == 'l' { return "i64" }
+    return ""
+}
+
+// gl3 can't pass the varargs on to a vprint, so this prints fmt up to the next
+// specifier and returns it; print/println read the vararg and dispatch on it.
+// The order of the specifiers must be 'f', and then 'u', and then the width specifier.
+private fnc next_spec(char** fmt) -> IoSpec {
+    while **fmt != 0i8 {
+        if **fmt != '%' {
+            put(**fmt);
+            *fmt += 1u64
+            continue
+        }
+        *fmt += 1u64
+
+        def char c = **fmt
+        if c == '%' {
+            put('%');
+            *fmt += 1u64
+            continue
+        }
+
+        if c == 'b' || c == 'c' || c == 's' {
+            *fmt += 1u64
+            return IoSpec:{ c, false, false, 0i8 }
+        }
+
+        def IoSpec spec = IoSpec:{ 'i', false, false, 0i8 }
+        if **fmt == 'f' {
+            spec.show_suffix = true;
+            *fmt += 1u64
+        }
+
+        if **fmt == 'u' {
+            spec.is_unsigned = true;
+            *fmt += 1u64
+        }
+
+        c = **fmt
+        if c == 'y' || c == 'w' || c == 'd' || c == 'l' {
+            spec.width = c;
+            *fmt += 1u64
+            return spec
+        }
+
+        put('%')
+        if c != 0i8 {
+            *fmt += 1u64
+        }
+    }
+
+    return IoSpec:{ 0i8, false, false, 0i8 }
+}
+
+// Prints a formatted string to stdout.
+// Format specifiers: %b (bool), %d (int32), %y (int8), %w (int16), %l(int64), %s (string), %c (char)
+// Prefix with %f to include format specifiers at the end (%fd = 7i32, %d = 7)
+// Prefix with %u for unsigned integers
+//
+// Examples: %fud = format specifier at the end, unsigned, 32-bit integer
+fnc print(char* fmt, ...) -> none {
+    def IoSpec spec = next_spec(&fmt)
+    while spec.kind != 0i8 {
+        if spec.kind == 'b' {
+            if vararg bool { put_str("true") } else { put_str("false") }
+        } else if spec.kind == 'c' {
+            put(vararg char)
+        } else if spec.kind == 's' {
+            put_str(vararg char*)
+        } else if spec.is_unsigned {
+            if spec.width == 'y' { print_uint((vararg uint8) as uint) }
+            if spec.width == 'w' { print_uint((vararg uint16) as uint) }
+            if spec.width == 'd' { print_uint((vararg uint32) as uint) }
+            if spec.width == 'l' { print_uint(vararg uint) }
+        } else {
+            if spec.width == 'y' { print_int((vararg int8) as int) }
+            if spec.width == 'w' { print_int((vararg int16) as int) }
+            if spec.width == 'd' { print_int((vararg int32) as int) }
+            if spec.width == 'l' { print_int(vararg int) }
+        }
+        if spec.show_suffix {
+            put_str(format_suffix(spec.width, spec.is_unsigned))
+        }
+        spec = next_spec(&fmt)
+    }
+}
+
+fnc println(char* fmt, ...) -> none {
+    def IoSpec spec = next_spec(&fmt)
+    while spec.kind != 0i8 {
+        if spec.kind == 'b' {
+            if vararg bool { put_str("true") } else { put_str("false") }
+        } else if spec.kind == 'c' {
+            put(vararg char)
+        } else if spec.kind == 's' {
+            put_str(vararg char*)
+        } else if spec.is_unsigned {
+            if spec.width == 'y' { print_uint((vararg uint8) as uint) }
+            if spec.width == 'w' { print_uint((vararg uint16) as uint) }
+            if spec.width == 'd' { print_uint((vararg uint32) as uint) }
+            if spec.width == 'l' { print_uint(vararg uint) }
+        } else {
+            if spec.width == 'y' { print_int((vararg int8) as int) }
+            if spec.width == 'w' { print_int((vararg int16) as int) }
+            if spec.width == 'd' { print_int((vararg int32) as int) }
+            if spec.width == 'l' { print_int(vararg int) }
+        }
+        if spec.show_suffix {
+            put_str(format_suffix(spec.width, spec.is_unsigned))
+        }
+        spec = next_spec(&fmt)
+    }
+    put(10i8)
+}
