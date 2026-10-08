@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"fmt"
+
 	"gl3/util"
 )
 
@@ -12,6 +14,8 @@ type Lexer struct {
 
 	currLine uint32
 	currCh   uint32
+
+	Warnings []util.PositionError
 }
 
 func New(input string) *Lexer {
@@ -230,7 +234,11 @@ func (l *Lexer) NextToken() Token {
 			if l.ch == '\'' {
 				tok.Literal = ""
 			} else {
-				tok.Literal = string(l.ch)
+				ch := l.ch
+				if ch == '\\' {
+					ch = l.readEscape()
+				}
+				tok.Literal = string(ch)
 				l.readChar() // skip next '
 			}
 			tok.Position.EndCol = l.currCh
@@ -250,19 +258,7 @@ func (l *Lexer) readString() string {
 			break
 		}
 		if l.ch == '\\' {
-			l.readChar()
-			switch l.ch {
-			case 'n':
-				buf = append(buf, '\n')
-			case 't':
-				buf = append(buf, '\t')
-			case 'r':
-				buf = append(buf, '\r')
-			case '\\':
-				buf = append(buf, '\\')
-			case '"':
-				buf = append(buf, '"')
-			}
+			buf = append(buf, rune(l.readEscape()))
 		} else {
 			buf = append(buf, rune(l.ch))
 		}
@@ -270,6 +266,30 @@ func (l *Lexer) readString() string {
 	}
 
 	return string(buf)
+}
+
+// readEscape consumes the character after a backslash and returns what it stands for.
+// Unknown escapes keep the character and add a warning.
+func (l *Lexer) readEscape() byte {
+	line, col := l.currLine, l.currCh
+	l.readChar()
+	switch l.ch {
+	case 'n':
+		return '\n'
+	case 't':
+		return '\t'
+	case 'r':
+		return '\r'
+	case '0':
+		return 0
+	case '\\', '"', '\'':
+		return l.ch
+	}
+	l.Warnings = append(l.Warnings, util.PositionError{
+		Position: &util.Position{StartLine: line, StartCol: col, EndLine: l.currLine, EndCol: l.currCh},
+		Msg:      fmt.Sprintf("unknown escape sequence `\\%c`", l.ch),
+	})
+	return l.ch
 }
 
 func (l *Lexer) readSuffix() string {

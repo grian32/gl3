@@ -200,6 +200,9 @@ func (ctx *buildContext) compileModule(absPath string, input string) (*compiledM
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
+	for _, w := range l.Warnings {
+		fmt.Printf("%s:%d:%d: warning: %s\n", absPath, w.Position.StartLine, w.Position.StartCol, w.Msg)
+	}
 	if len(p.Errors) != 0 {
 		for _, parseErr := range p.Errors {
 			fmt.Printf("%s:%s\n", absPath, &parseErr)

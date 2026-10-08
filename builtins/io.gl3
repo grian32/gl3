@@ -159,5 +159,5 @@ fnc println(char* fmt, ...) -> none {
         }
         spec = next_spec(&fmt)
     }
-    put(10i8)
+    put('\n')
 }
