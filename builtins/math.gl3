@@ -1,0 +1,16 @@
+// Reinterprets through a pointer; fine since the emitter emits no TBAA metadata (see #38).
+fnc float_bits(float f) -> uint {
+    return *((&f) as uint*)
+}
+
+fnc float_from_bits(uint bits) -> float {
+    return *((&bits) as float*)
+}
+
+fnc float32_bits(float32 f) -> uint32 {
+    return *((&f) as uint32*)
+}
+
+fnc float32_from_bits(uint32 bits) -> float32 {
+    return *((&bits) as float32*)
+}

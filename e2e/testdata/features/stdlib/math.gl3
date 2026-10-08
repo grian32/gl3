@@ -1,0 +1,9 @@
+// e2e: {"mode":"run","stdout":"4613374868287651840 13836746905142427648 1076887552 1065353216\ntrue true true\n"}
+import "math"
+import "io"
+
+fnc main() -> int32 {
+    println("%ul %ul %ud %ud", float_bits(2.75), float_bits(-2.75), float32_bits(2.75f32), float32_bits(1.0f32))
+    println("%b %b %b", float_from_bits(0x4006000000000000u64) == 2.75, float32_from_bits(0x40300000u32) == 2.75f32, float32_from_bits(0x7F800000u32) > 1000000000.0f32)
+    return 0i32
+}

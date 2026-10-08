@@ -77,7 +77,8 @@ def Pair p = Pair:{ 1, 2 }
 | `uint`   | 64-bit unsigned integer      |
 | `char`   | 8-bit value (alias for int8) |
 | `bool`   | boolean (true or false)      |
-| `float`  | 32-bit floating point        |
+| `float32`| 32-bit floating point        |
+| `float`  | 64-bit floating point        |
 | `none`   | void type (function returns) |
 
 ### Pointer Types
@@ -127,11 +128,24 @@ Integer literals specify their type via suffixes. A bare number without suffix i
 1u64    // uint (64-bit unsigned)
 ```
 
-### Floating Point Literals
+Hexadecimal literals start with `0x` and may use upper or lower case digits. Suffixes work the same way.
 
 ```gl3
-1.5     // float (32-bit)
-3.14    // float
+0xFF        // int
+0x1fu8      // uint8
+0x80000000u32
+```
+
+Decimal literals cannot have leading zeros: `010` is an error, not octal.
+
+### Floating Point Literals
+
+A bare floating point literal is a 64-bit `float`. The `f32` suffix makes a `float32`, and `f64` is accepted for `float`.
+
+```gl3
+1.5     // float (64-bit)
+3.14f64 // float
+1.5f32  // float32
 ```
 
 ### Character Literals
@@ -139,14 +153,34 @@ Integer literals specify their type via suffixes. A bare number without suffix i
 ```gl3
 'a'     // char literal (int8 value 97)
 'Z'     // char literal (int8 value 90)
+'\n'    // escape sequence (int8 value 10)
 ```
+
+Char literals hold exactly one character or escape sequence; `''` is an error.
+
+### Escape Sequences
+
+Char and string literals support the same escapes:
+
+| Escape | Value |
+| ------ | ----- |
+| `\n`   | newline |
+| `\t`   | tab |
+| `\r`   | carriage return |
+| `\0`   | NUL (0) |
+| `\\`   | backslash |
+| `\'`   | single quote |
+| `\"`   | double quote |
+
+An unknown escape such as `\q` keeps the character (`q`) and prints a warning.
 
 ### String Literals
 
-String literals are null-terminated and stored in read-only memory as `char*`.
+String literals are null-terminated and stored in read-only memory as `char*`. They support the escapes listed above.
 
 ```gl3
-"hello"     // static string in rodata
+"hello"         // static string in rodata
+"tab\there\n"   // with escapes
 ```
 
 ### Boolean Literals
@@ -436,6 +470,43 @@ fnc process(int32 count, char* data, bool flag) -> none {
 }
 ```
 
+### External Functions
+
+`extern fnc` declares a function defined elsewhere, such as in libc, without a body.
+
+```gl3
+extern fnc malloc(uint size) -> none*
+extern fnc putchar(int32 c) -> int32
+```
+
+### Variadic Functions
+
+A trailing `...` after the parameters accepts any number of extra arguments. It works on both `extern` declarations and gl3 definitions.
+
+```gl3
+extern fnc printf(char* fmt, ...) -> int32
+
+fnc sum(int32 count, ...) -> int {
+    def int total = 0
+    def int32 i = 0i32
+    while i < count {
+        total += vararg int
+        i += 1i32
+    }
+    return total
+}
+
+fnc main() -> int32 {
+    printf("%d\n", sum(3i32, 1, 2, 3))
+    return 0i32
+}
+```
+
+- `vararg T` reads the next extra argument as `T`. It can only be used inside a variadic function, and the reads must match the types the caller passed, in order. Nothing checks this, as in C.
+- Extra arguments get C's default promotions: `int8`/`int16` are sign-extended and `bool`/`uint8`/`uint16` zero-extended to `int32`, and `float32` becomes `float`. `vararg` undoes this, so `vararg int8` reads what was passed as an `int8`.
+- Struct values, `none` and a bare `nullptr` cannot be passed or read as variadic arguments. Pass a pointer to the struct instead.
+- The argument list cannot be passed on to another function (there is no `va_list`), so each variadic function reads its own arguments.
+
 ## Structs
 
 ### Definition
@@ -452,7 +523,7 @@ struct Person {
 Positional initialization only. Fields are specified in declaration order.
 
 ```gl3
-def Person p = Person{ 25i32, true }
+def Person p = Person:{ 25i32, true }
 ```
 
 ### Field Access
@@ -467,6 +538,34 @@ def Person* ptr = &p
 def int32 age_from_ptr = ptr.age    // no -> needed
 ptr.age = 30i32
 ```
+
+### Opaque Structs
+
+`extern struct` declares a struct whose fields are not known, such as a C library handle. It can only be used through pointers: `sizeof`, values and field access are errors.
+
+```gl3
+extern struct FILE
+extern fnc fopen(char* path, char* mode) -> FILE*
+extern fnc fclose(FILE* file) -> int32
+```
+
+## Visibility
+
+When a file is imported, its top-level functions, structs and `global const` definitions are visible to the importer. `private` hides a declaration so it can only be used inside its own file:
+
+```gl3
+private struct Spec {
+    char kind
+}
+
+private fnc helper() -> none { }
+private extern fnc strlen(char* s) -> uint
+private extern struct Handle
+```
+
+- `private` works on `fnc`, `extern fnc`, `struct` and `extern struct`.
+- Two files can each have a private declaration with the same name, and an importer can define its own declaration with that name.
+- A public function cannot use a private struct in its parameters or return type, and a `global const` cannot have a private struct type: `fnc make() -> Spec` is an error if `Spec` is private.
 
 ## Pointers
 
