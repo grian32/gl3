@@ -1,0 +1,44 @@
+private extern fnc malloc(uint size) -> none*
+private extern fnc realloc(none* ptr, uint size) -> none*
+private extern fnc free(none* ptr) -> none
+private extern fnc memcpy(none* dest, none* src, uint n) -> none*
+private extern fnc printf(char* fmt, ...) -> int32
+
+fnc arr_new(uint elem_size) -> none* {
+    def uint cap = 16u64
+    def uint* meta = malloc(((sizeof uint) * 3u64) + (elem_size * cap)) as uint*
+    meta[0] = cap
+    meta[1] = elem_size
+    meta[2] = 0u64
+
+    return ((meta as uint8*) + ((sizeof uint) * 3u64)) as none*
+}
+
+fnc arr_push(none** arr, none* elem) -> none {
+    def uint* meta = (((*arr) as uint8*) - ((sizeof uint) * 3u64)) as uint*
+    def uint cap = meta[0]
+    def uint elem_size = meta[1]
+    def uint len = meta[2]
+
+    if len >= cap {
+        cap *= 2u64
+        def none* new_meta = realloc(meta as none*, ((sizeof uint) * 3u64) + (elem_size * cap))
+        if new_meta == nullptr {
+            printf("arr_push: failed to realloc\n")
+            return
+        }
+        (new_meta as uint*)[0] = cap
+        meta = new_meta as uint*;
+        *arr = ((meta as uint8*) + ((sizeof uint) * 3u64)) as none*
+    }
+
+    def uint8* dest = ((*arr) as uint8*) + (len * elem_size)
+    len += 1u64
+    memcpy(dest as none*, elem, elem_size)
+    meta[2] = len
+}
+
+fnc arr_free(none** arr) -> none {
+    def uint8* meta = ((*arr) as uint8*) - ((sizeof uint) * 3u64)
+    free(meta as none*)
+}
