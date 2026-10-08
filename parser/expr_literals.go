@@ -5,6 +5,7 @@ package parser
 import (
 	"gl3/lexer"
 	"strconv"
+	"strings"
 )
 
 func (p *Parser) parseIdentifier() Expression {
@@ -31,9 +32,19 @@ func (p *Parser) parseIntegerLiteral() Expression {
 
 	// could be more efficient by parsing based on type or the lack thereof but this makes for a decent chunk cleaner
 	// code
-	uvalue, err := strconv.ParseUint(p.currToken.Literal, 0, 64)
+	// the lexer only produces decimal and 0x literals; base 0 would also read a leading 0 as octal
+	literal := p.currToken.Literal
+	var uvalue uint64
+	var err error
+	if hex, ok := strings.CutPrefix(literal, "0x"); ok {
+		uvalue, err = strconv.ParseUint(hex, 16, 64)
+	} else if len(literal) > 1 && literal[0] == '0' {
+		p.appendError(&p.currToken.Position, "integer literal %q has a leading zero", literal)
+	} else {
+		uvalue, err = strconv.ParseUint(literal, 10, 64)
+	}
 	if err != nil {
-		p.appendError(&p.currToken.Position, "could not parse %q as integer", p.currToken.Literal)
+		p.appendError(&p.currToken.Position, "could not parse %q as integer", literal)
 	}
 
 	lit.UValue = uvalue

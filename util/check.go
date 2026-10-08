@@ -19,5 +19,6 @@ func IsAlphaNumeric(char byte) bool {
 
 func IsHexaNumeral(char byte) bool {
 	return (char >= 'A' && char <= 'F') ||
+		(char >= 'a' && char <= 'f') ||
 		(char >= '0' && char <= '9')
 }
