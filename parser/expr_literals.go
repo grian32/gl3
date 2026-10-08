@@ -96,6 +96,11 @@ func (p *Parser) parseFloatLiteral() Expression {
 }
 
 func (p *Parser) parseCharLiteral() Expression {
+	if p.currToken.Literal == "" {
+		p.appendError(&p.currToken.Position, "empty character literal")
+		p.NextToken()
+		return nil
+	}
 	vt := lexer.VarType{Base: lexer.Int8, Pointer: 0}
 	expr := &IntegerLiteral{Token: p.currToken, UValue: uint64(p.currToken.Literal[0]), Type: vt}
 	p.NextToken()
