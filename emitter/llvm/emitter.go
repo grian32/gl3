@@ -445,6 +445,7 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		global.SetInitializer(data)
 		global.SetGlobalConstant(true)
 		global.SetUnnamedAddr(true)
+		global.SetLinkage(llvmapi.PrivateLinkage)
 
 		zero := llvmapi.ConstInt(e.context.Int32Type(), 0, false)
 		return llvmapi.ConstInBoundsGEP(data.Type(), global, []llvmapi.Value{zero, zero}), nil
