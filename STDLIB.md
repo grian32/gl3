@@ -9,10 +9,12 @@ Dynamic heap-allocated arrays with automatic resizing.
 | Function                | Parameters                    | Returns  |
 |-------------------------|-------------------------------|----------|
 | `arr_new(size)`         | uint (element size in bytes)  | none*    |
-| `arr_push(&arr, &elem)` | none** (array), none* (element to copy) | none |
-| `arr_free(&arr)`        | none** (array)                | none     |
+| `arr_push(&arr, &elem)` | none* (pointer to the array), none* (element to copy) | none |
+| `arr_free(&arr)`        | none* (pointer to the array)  | none     |
 
 `arr_push` copies `size` bytes from `elem` into the array, growing it when full. It may move the array, which is why it takes a pointer to the array pointer.
+
+**Always pass `&arr`, not `arr`.** Both parameters are `none*`, and any pointer converts to `none*` implicitly, so `arr_push(arr, &val)` compiles. It then reads the hidden metadata from the wrong place and corrupts memory.
 
 ### Important: Hidden Metadata
 
@@ -27,18 +29,18 @@ fnc main() -> int32 {
     // create array, cast to appropriate pointer type
     def int32* arr = (arr_new((sizeof int32))) as int32*
     
-    // push elements (pass pointers, cast to none*)
+    // push elements (pass a pointer to the array and to the element)
     def int32 val1 = 1i32
     def int32 val2 = 2i32
-    arr_push((&arr) as none**, (&val1) as none*)
-    arr_push((&arr) as none**, (&val2) as none*)
+    arr_push(&arr, &val1)
+    arr_push(&arr, &val2)
 
     // access via indexing
     def int32 first = arr[0]
     arr[1] = 10i32
 
     // free when done
-    arr_free((&arr) as none**)
+    arr_free(&arr)
     
     return 0i32
 }
@@ -57,9 +59,9 @@ This expands to:
 ```gl3
 def int32* nums = (arr_new((sizeof int32))) as int32*
 def int32 item = 1i32
-arr_push((&nums) as none**, (&item) as none*)
+arr_push(&nums, &item)
 item = 2i32
-arr_push((&nums) as none**, (&item) as none*)
+arr_push(&nums, &item)
 // ... and so on for 3i32, 4i32, 5i32
 ```
 
@@ -152,8 +154,8 @@ fnc main() -> int32 {
     def int32* zeros = calloc(count, sizeof int32) as int32*
     zeros[2] = 7i32
 
-    free(values as none*)
-    free(zeros as none*)
+    free(values)
+    free(zeros)
 
     return 0i32
 }
@@ -162,7 +164,7 @@ fnc main() -> int32 {
 ### Notes
 
 - `ralloc` is intentionally low-level and does not track element counts or types.
-- Always cast returned `none*` to the pointer type you want to use, and cast back to `none*` when freeing.
+- Cast the returned `none*` to the pointer type you want to use. Any pointer converts to `none*` implicitly, so `free` needs no cast.
 - Sizes are `uint`, matching the type of `sizeof`.
 - Pair every successful `malloc`/`calloc` with exactly one `free`.
 

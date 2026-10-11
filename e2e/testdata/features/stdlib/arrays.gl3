@@ -1,0 +1,15 @@
+// e2e: {"mode":"run","exit":57}
+// Pushes past the initial capacity of 16 so the array has to grow.
+import "arrays"
+
+fnc main() -> int32 {
+    def int32* arr = arr_new(sizeof int32) as int32*
+    def int32 i = 0i32
+    while i < 20i32 {
+        arr_push(&arr, &i)
+        i += 1i32
+    }
+    def int32 result = arr[0] + arr[19] + arr[18] + arr[1]
+    arr_free(&arr)
+    return result + 19i32
+}

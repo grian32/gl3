@@ -11,10 +11,12 @@ fnc arr_new(uint elem_size) -> none* {
     meta[1] = elem_size
     meta[2] = 0u64
 
-    return ((meta as uint8*) + ((sizeof uint) * 3u64)) as none*
+    return (meta as uint8*) + ((sizeof uint) * 3u64)
 }
 
-fnc arr_push(none** arr, none* elem) -> none {
+// arr_ptr points to the array pointer, since growing the array can move it.
+fnc arr_push(none* arr_ptr, none* elem) -> none {
+    def none** arr = arr_ptr as none**
     def uint* meta = (((*arr) as uint8*) - ((sizeof uint) * 3u64)) as uint*
     def uint cap = meta[0]
     def uint elem_size = meta[1]
@@ -22,23 +24,24 @@ fnc arr_push(none** arr, none* elem) -> none {
 
     if len >= cap {
         cap *= 2u64
-        def none* new_meta = realloc(meta as none*, ((sizeof uint) * 3u64) + (elem_size * cap))
+        def none* new_meta = realloc(meta, ((sizeof uint) * 3u64) + (elem_size * cap))
         if new_meta == nullptr {
             printf("arr_push: failed to realloc\n")
             return
         }
         (new_meta as uint*)[0] = cap
         meta = new_meta as uint*;
-        *arr = ((meta as uint8*) + ((sizeof uint) * 3u64)) as none*
+        *arr = (meta as uint8*) + ((sizeof uint) * 3u64)
     }
 
     def uint8* dest = ((*arr) as uint8*) + (len * elem_size)
     len += 1u64
-    memcpy(dest as none*, elem, elem_size)
+    memcpy(dest, elem, elem_size)
     meta[2] = len
 }
 
-fnc arr_free(none** arr) -> none {
+fnc arr_free(none* arr_ptr) -> none {
+    def none** arr = arr_ptr as none**
     def uint8* meta = ((*arr) as uint8*) - ((sizeof uint) * 3u64)
-    free(meta as none*)
+    free(meta)
 }

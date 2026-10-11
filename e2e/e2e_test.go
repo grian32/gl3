@@ -44,9 +44,7 @@ func TestFixtures(t *testing.T) {
 		t.Fatal(err)
 	}
 	compiler := filepath.Join(t.TempDir(), "gl3")
-	// Prepare the embedded builtin IR on clean checkouts, then build once from
-	// current sources; never accidentally test a stale ./gl3.
-	runCommand(t, root, time.Minute, "make", "stdlib").success(t)
+	// Build once from current sources; never accidentally test a stale ./gl3.
 	runCommand(t, root, 2*time.Minute, "go", "build", "-tags=llvm22", "-o", compiler, ".").success(t)
 	fixtures := filepath.Join(root, "e2e", "testdata")
 	count := 0

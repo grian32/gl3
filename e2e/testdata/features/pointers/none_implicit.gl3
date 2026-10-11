@@ -1,0 +1,17 @@
+// e2e: {"mode":"run","exit":42}
+// Any pointer converts to none* in arguments, def, assignment and return.
+fnc read(none* p) -> int32 {
+    return *(p as int32*)
+}
+
+fnc erase(int32* p) -> none* {
+    return p
+}
+
+fnc main() -> int32 {
+    def int32 value = 40i32
+    def none* a = &value
+    def none* b = a
+    b = &value
+    return read(a) + read(erase(&value)) - read(b) + 2i32
+}

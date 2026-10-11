@@ -197,7 +197,7 @@ func (a *Analyzer) checkBodies() bool {
 			return false
 		}
 
-		resolveNullptr(initExpr, g.Type)
+		initExpr = coerce(initExpr, g.Type)
 		if g.Type != initExpr.Type() {
 			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type(), g.Name, g.Type)
 			return false
@@ -298,7 +298,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		resolveNullptr(expr, retType)
+		expr = coerce(expr, retType)
 		if expr.Type() != retType {
 			a.appendDiagnostic(stmt.Position(), "value with type `%s` is not allowed to be returned for function `%s` of type `%s`", expr.Type(), a.currentFunction.Name, retType)
 			return nil, false
@@ -331,7 +331,7 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		resolveNullptr(expr, defType)
+		expr = coerce(expr, defType)
 		if defType != expr.Type() {
 			a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type(), defType)
 			return nil, false
@@ -471,7 +471,7 @@ func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiter
 			itemsOk = false
 			continue
 		}
-		resolveNullptr(value, elementType)
+		value = coerce(value, elementType)
 		if value.Type() != elementType {
 			a.appendDiagnostic(item.Position(), "array element %d: expected `%s`, got `%s`", i+1, elementType, value.Type())
 			itemsOk = false
@@ -635,7 +635,7 @@ func (a *Analyzer) checkStructLiteral(expr *parser.StructInitializationExpressio
 			fieldsOk = false
 			continue
 		}
-		resolveNullptr(fieldExpr, s.Fields[i].Type)
+		fieldExpr = coerce(fieldExpr, s.Fields[i].Type)
 		if fieldExpr.Type() != s.Fields[i].Type {
 			a.appendDiagnostic(f.Position(), "wanted %s for field %d in literal for struct `%s`, got %s", s.Fields[i].Type, i, s.Name, fieldExpr.Type())
 			fieldsOk = false
@@ -778,6 +778,17 @@ func resolveNullptr(expr hir.Expr, want hir.Type) {
 	if null, ok := expr.(*hir.NullPointer); ok && null.ResultType.Base == hir.Null && want.Pointer > 0 {
 		null.ResultType = want
 	}
+}
+
+// coerce applies the implicit conversions allowed wherever a value flows into a slot of type want:
+// nullptr takes its type from want, and any pointer converts to none*.
+func coerce(expr hir.Expr, want hir.Type) hir.Expr {
+	resolveNullptr(expr, want)
+	have := expr.Type()
+	if want == (hir.Type{Base: hir.Void, Pointer: 1}) && have.Pointer > 0 && have != want {
+		return &hir.Cast{ExprInfo: hir.ExprInfo{ResultType: want}, Kind: hir.PointerCast, Value: expr}
+	}
+	return expr
 }
 
 func (a *Analyzer) checkBinaryOp(infixExpr *parser.InfixExpression) (hir.Expr, bool) {
@@ -1070,7 +1081,7 @@ func (a *Analyzer) checkAssignment(assignExpr *parser.AssignmentExpression) (hir
 		}, true
 	}
 
-	resolveNullptr(rightExpr, place.Type())
+	rightExpr = coerce(rightExpr, place.Type())
 	if rightExpr.Type() != place.Type() {
 		a.appendDiagnostic(assignExpr.Position(), "expected type `%s` in assignment but got type `%s`.", place.Type(), rightExpr.Type())
 		return nil, false
@@ -1183,7 +1194,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 			continue
 		}
 		if i < len(fncNode.Parameters) {
-			resolveNullptr(hirExpr, fncNode.Parameters[i].Type)
+			hirExpr = coerce(hirExpr, fncNode.Parameters[i].Type)
 			if hirExpr.Type() != fncNode.Parameters[i].Type {
 				a.appendDiagnostic(p.Position(), "argument %d (`%s`): expected `%s`, got `%s`", i+1, fncNode.Parameters[i].Name, fncNode.Parameters[i].Type, hirExpr.Type())
 				badParam = true

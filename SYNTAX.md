@@ -368,6 +368,16 @@ def int8 small = 255u8 as int8
 def int32* ptr = (arr_new((sizeof int32))) as int32*
 ```
 
+Any pointer converts to `none*` implicitly wherever a value goes into a typed slot: a declaration, assignment, argument, return value, or struct or array element. The other direction needs a cast, and so does `T**` to `none**`.
+
+```gl3
+extern fnc free(none* ptr) -> none
+
+def none* raw = ptr     // no cast needed
+free(ptr)               // no cast needed
+def int32* back = raw as int32*
+```
+
 ## Sizeof Expression
 
 Returns the byte size of a type.
