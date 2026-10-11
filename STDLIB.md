@@ -48,7 +48,7 @@ fnc main() -> int32 {
 
 ### Array Literal Syntax
 
-Array literals provide syntactic sugar for array creation and population:
+Array literals provide syntactic sugar for array creation and population. They lower to `arr_new`/`arr_push`, so the module must `import "arrays"`:
 
 ```gl3
 def int32* nums = [int32; 1i32, 2i32, 3i32, 4i32, 5i32]

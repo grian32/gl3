@@ -482,6 +482,14 @@ func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiter
 	if !itemsOk {
 		return nil, false
 	}
+	none := hir.Type{Base: hir.Void, Pointer: 1}
+	if !a.checkArraysFunction(expr, "arr_new", []hir.Type{{Base: hir.Uint}}, none) {
+		return nil, false
+	}
+	if !a.checkArraysFunction(expr, "arr_push", []hir.Type{none, none}, hir.Type{Base: hir.Void}) {
+		return nil, false
+	}
+
 	resultType := elementType
 	resultType.Pointer++
 	return &hir.ArrayLiteral{
@@ -489,6 +497,25 @@ func (a *Analyzer) checkArrayLiteral(expr *parser.ArrayLiteral) (*hir.ArrayLiter
 		ElementType: elementType,
 		Items:       items,
 	}, true
+}
+
+func (a *Analyzer) checkArraysFunction(expr *parser.ArrayLiteral, name string, params []hir.Type, ret hir.Type) bool {
+	symbol, ok := a.Symbols[name]
+	id, isFunction := symbol.(hir.FunctionID)
+	if !ok || !isFunction {
+		a.appendDiagnostic(expr.Position(), "array literals require import \"arrays\" (could not find `%s`)", name)
+		return false
+	}
+	fn := a.Functions[id]
+	matches := fn.ReturnType == ret && len(fn.Parameters) == len(params) && !fn.Variadic
+	for i := 0; matches && i < len(params); i++ {
+		matches = fn.Parameters[i].Type == params[i]
+	}
+	if !matches {
+		a.appendDiagnostic(expr.Position(), "array literals need `%s` from the arrays stdlib, but `%s` has a different signature", name, name)
+		return false
+	}
+	return true
 }
 
 func (a *Analyzer) checkCast(expr *parser.CastExpression) (*hir.Cast, bool) {

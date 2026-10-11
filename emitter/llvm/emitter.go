@@ -26,6 +26,9 @@ type Emitter struct {
 	locals []llvmapi.Value
 	loops  []loopBlocks
 
+	arrNew  hir.FunctionID
+	arrPush hir.FunctionID
+
 	containsVariadic bool
 	vaStart          llvmapi.Value
 	vaEnd            llvmapi.Value
@@ -87,6 +90,16 @@ func New(program *hir.Program, moduleName string, optimization int) (*Emitter, e
 	module.SetTarget(triple)
 	module.SetDataLayout(data.String())
 
+	var arrNew, arrPush hir.FunctionID
+	for _, f := range program.Functions {
+		switch f.Name {
+		case "arr_new":
+			arrNew = f.Id
+		case "arr_push":
+			arrPush = f.Id
+		}
+	}
+
 	return &Emitter{
 		program:          program,
 		context:          context,
@@ -99,6 +112,8 @@ func New(program *hir.Program, moduleName string, optimization int) (*Emitter, e
 		structs:          make([]llvmapi.Type, len(program.Structs)),
 		functions:        make([]llvmapi.Value, len(program.Functions)),
 		globals:          make([]llvmapi.Value, len(program.Globals)),
+		arrNew:           arrNew,
+		arrPush:          arrPush,
 	}, nil
 }
 
@@ -563,7 +578,29 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 		return value, nil
 	case *hir.ArrayLiteral:
-		panic("emitter: ArrayLiteral not implemented until the stdlib is ready")
+		newFnc := e.functions[e.arrNew]
+		push := e.functions[e.arrPush]
+
+		elemType, err := e.lowerType(expr.ElementType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		sizeInt := llvmapi.ConstInt(e.context.Int64Type(), e.targetData.TypeAllocSize(elemType), false)
+		newCall := e.builder.CreateCall(newFnc.GlobalValueType(), newFnc, []llvmapi.Value{sizeInt}, "")
+		ptrType := llvmapi.PointerType(e.context.Int8Type(), 0)
+		ptr := e.builder.CreateAlloca(ptrType, "")
+		e.builder.CreateStore(newCall, ptr)
+		elem := e.builder.CreateAlloca(elemType, "")
+		for _, item := range expr.Items {
+			v, err := e.emitExpr(item)
+			if err != nil {
+				return llvmapi.Value{}, err
+			}
+			e.builder.CreateStore(v, elem)
+			e.builder.CreateCall(push.GlobalValueType(), push, []llvmapi.Value{ptr, elem}, "")
+		}
+
+		return e.builder.CreateLoad(ptrType, ptr, ""), nil
 	case *hir.Sizeof:
 		lowered, err := e.lowerType(expr.OperandType)
 		if err != nil {

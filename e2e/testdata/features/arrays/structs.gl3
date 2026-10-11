@@ -1,0 +1,7 @@
+// e2e: {"mode":"run","exit":42}
+import "arrays"
+struct Pair { int32 a int8 b int32 c }
+fnc main() -> int32 {
+    def Pair* pairs = [Pair; Pair:{1i32, 2i8, 3i32}, Pair:{4i32, 5i8, 6i32}]
+    return pairs[0].a + (pairs[0].b as int32) + pairs[0].c + pairs[1].a * 2i32 + (pairs[1].b as int32) * 3i32 + pairs[1].c + 7i32
+}

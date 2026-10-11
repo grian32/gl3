@@ -1,6 +1,7 @@
 // e2e: {"mode":"run","exit":42}
 // A global struct tracks the heaviest item from an array of structs; the
 // winner is identified by pointer equality against the array slot.
+import "arrays"
 struct Item { int32 id int32 weight }
 struct Best { int32 id int32 weight }
 global Best best = Best:{0i32, 0i32}

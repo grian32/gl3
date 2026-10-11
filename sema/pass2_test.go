@@ -138,7 +138,9 @@ var pass2ExpressionTests = []struct {
 	},
 	{name: "index lowers to pointer add and dereference", source: `fnc sample(int32* x, int i) -> int32 { return x[i] }`, want: &ast.Dereference{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Pointer: &ast.Binary{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, Op: ast.PointerAdd, Left: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ID: 0}, Right: &ast.LocalRef{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int}}, ID: 1}}}},
 	{name: "sizeof", source: `fnc sample() -> uint { return sizeof int32 }`, want: &ast.Sizeof{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Uint}}, OperandType: ast.Type{Base: ast.Int32}}},
-	{name: "array literal", source: `fnc sample() -> int32* { return [int32; 1i32, 2i32] }`, want: &ast.ArrayLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ElementType: ast.Type{Base: ast.Int32}, Items: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}}}},
+	{name: "array literal", source: `fnc sample() -> int32* { return [int32; 1i32, 2i32] }
+extern fnc arr_new(uint elem_size) -> none*
+extern fnc arr_push(none* arr, none* elem) -> none`, want: &ast.ArrayLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32, Pointer: 1}}, ElementType: ast.Type{Base: ast.Int32}, Items: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 2}}}},
 	{name: "struct literal", source: `struct Pair { int32 x bool y } fnc sample() -> Pair { return Pair:{1i32,true} }`, want: &ast.StructLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.StructType}}, Fields: []ast.Expr{&ast.IntegerLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Int32}}, Value: 1}, &ast.BooleanLiteral{ExprInfo: ast.ExprInfo{ResultType: ast.Type{Base: ast.Bool}}, Value: true}}}},
 	{
 		name:   "address field",
@@ -365,6 +367,14 @@ fnc sample() -> int32 { x += 2i32 return x }`, diagnostics: []expectedDiagnostic
 	{name: "array item mismatch", source: `fnc sample() -> int32 {
  def int32* x = [int32; true] return 0i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"int32", "bool"}, line: 2}}},
+	{name: "array literal without arrays", source: `fnc sample() -> int32* {
+ return [int32; 1i32]
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"import \"arrays\"", "arr_new"}, line: 2}}},
+	{name: "array literal with wrong arr_push", source: `extern fnc arr_new(uint elem_size) -> none*
+extern fnc arr_push(none** arr, none* elem) -> none
+fnc sample() -> int32* {
+ return [int32; 1i32]
+}`, diagnostics: []expectedDiagnostic{{messageContains: []string{"arr_push", "signature"}, line: 4}}},
 	{name: "integer overflow", source: `fnc sample() -> int32 {
  return 2147483648i32
 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"invalid value", "Int32"}, line: 2}}},

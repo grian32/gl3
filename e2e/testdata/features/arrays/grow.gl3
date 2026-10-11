@@ -1,0 +1,16 @@
+// e2e: {"mode":"run","exit":42}
+// 20 int (8-byte) items crosses arr_push's realloc at 16. Weighting each item
+// by its index makes a misplaced or missing item change the result.
+import "arrays"
+fnc main() -> int32 {
+    def int* values = [int; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    def int total = 0
+    def int i = 0
+    while i < 20 {
+        total += values[i] * (i + 1)
+        i += 1
+    }
+    arr_free(&values)
+    // 1^2 + 2^2 + ... + 20^2 = 2870
+    return (total - 2870 + 42) as int32
+}

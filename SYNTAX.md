@@ -203,7 +203,7 @@ Where there is no pointer type to take (for example `def int32 x = nullptr`, or 
 
 ### Array Literals
 
-Array literals are syntactic sugar that expand to dynamic array operations.
+Array literals are syntactic sugar that expand to dynamic array operations, so they require `import "arrays"` (see STDLIB.md).
 
 ```gl3
 [int32; 1i32, 2i32, 3i32]
