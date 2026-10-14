@@ -1,7 +1,8 @@
-package sema
+package tests
 
 import (
 	ast "gl3/hir"
+	"gl3/sema"
 	"testing"
 )
 
@@ -186,7 +187,7 @@ func TestPass2Expressions(t *testing.T) {
 	for _, test := range pass2ExpressionTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
+			got, diagnostics := sema.New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
 				t.Fatal("missing checked function")
@@ -435,7 +436,7 @@ func TestPass2Diagnostics(t *testing.T) {
 	for _, test := range pass2DiagnosticTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			_, diagnostics := New().Analyze(parseDeclarations(t, test.source))
+			_, diagnostics := sema.New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 		})
 	}
@@ -463,7 +464,7 @@ func TestPass2Bodies(t *testing.T) {
 	for _, test := range pass2BodyTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
+			got, diagnostics := sema.New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil || len(got.Functions) == 0 {
 				t.Fatal("missing checked function")
@@ -561,7 +562,7 @@ func TestPass2Globals(t *testing.T) {
 	for _, test := range pass2GlobalTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
+			got, diagnostics := sema.New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			if got == nil {
 				t.Fatal("missing checked program")
@@ -590,7 +591,7 @@ func TestPass2Program(t *testing.T) {
 	for _, test := range pass2ProgramTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			got, diagnostics := New().Analyze(parseDeclarations(t, test.source))
+			got, diagnostics := sema.New().Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, nil)
 			assertDeclarations(t, got, &test.want)
 		})

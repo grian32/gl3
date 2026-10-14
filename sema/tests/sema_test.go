@@ -1,9 +1,10 @@
-package sema
+package tests
 
 import (
 	"gl3/hir"
 	"gl3/lexer"
 	"gl3/parser"
+	"gl3/sema"
 	"reflect"
 	"strings"
 	"testing"
@@ -384,7 +385,7 @@ func TestAnalyze(t *testing.T) {
 	for _, test := range declarationTests {
 		t.Run(test.name, func(t *testing.T) {
 			program := parseDeclarations(t, test.source)
-			c := New()
+			c := sema.New()
 			got, diagnostics := c.Analyze(program)
 
 			assertDiagnostics(t, diagnostics, test.diagnostics)
@@ -502,7 +503,7 @@ func assertSymbols(t *testing.T, got, want map[string]hir.Symbol) {
 
 // Match diagnostics without requiring a particular reporting order. Fragments
 // keep these tests independent of punctuation and surrounding explanation.
-func assertDiagnostics(t *testing.T, got []Diagnostic, want []expectedDiagnostic) {
+func assertDiagnostics(t *testing.T, got []sema.Diagnostic, want []expectedDiagnostic) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Fatalf("diagnostics: want %d, got %d: %+v", len(want), len(got), got)
@@ -681,7 +682,7 @@ func TestExternDeclarations(t *testing.T) {
 	for _, test := range externDeclarationTests {
 		t.Run(test.name, func(t *testing.T) {
 			defer failOnPanic(t)
-			c := New()
+			c := sema.New()
 			got, diagnostics := c.Analyze(parseDeclarations(t, test.source))
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 			if len(test.diagnostics) != 0 {

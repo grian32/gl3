@@ -1,7 +1,8 @@
-package sema
+package tests
 
 import (
 	"gl3/hir"
+	"gl3/sema"
 	"testing"
 )
 
@@ -131,7 +132,7 @@ func TestAnalyzeScopes(t *testing.T) {
 	for _, test := range scopeTests {
 		t.Run(test.name, func(t *testing.T) {
 			program := parseDeclarations(t, test.source)
-			c := New()
+			c := sema.New()
 			got, diagnostics := c.Analyze(program)
 			assertDiagnostics(t, diagnostics, test.diagnostics)
 			if len(test.diagnostics) != 0 {
