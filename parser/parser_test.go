@@ -1532,8 +1532,6 @@ func TestCallNonFunctionError(t *testing.T) {
 		line, col uint32
 	}{
 		"literal callee": {"fnc main() -> int32 { return 12i32(1i32) }", 1, 35},
-		// Newlines don't end statements, so a line starting with ( continues the previous one.
-		"missing semicolon": {"fnc main() -> int32 {\n x = 12i32\n (x)\n return x\n}", 3, 2},
 	}
 
 	for name, test := range tests {
@@ -1550,5 +1548,14 @@ func TestCallNonFunctionError(t *testing.T) {
 			}
 			t.Errorf("expected a call diagnostic, got %v", p.Errors)
 		})
+	}
+}
+
+// A newline after a complete expression ends the statement, so a line starting
+// with ( is a new statement rather than a call on the previous one.
+func TestNewlineEndsStatementBeforeParen(t *testing.T) {
+	fn := parseSingleStatement(t, "fnc main() -> int32 {\n x = 12i32\n (x)\n return x\n}").(*FunctionStatement)
+	if len(fn.Body.Statements) != 3 {
+		t.Fatalf("statements: want 3, got %d", len(fn.Body.Statements))
 	}
 }
