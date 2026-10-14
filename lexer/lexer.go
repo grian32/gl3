@@ -59,6 +59,14 @@ var singleCharToken = map[byte]TokenType{
 }
 
 func (l *Lexer) NextToken() Token {
+	line := l.currLine
+	tok := l.nextToken()
+	tok.NewlineBefore = tok.Position.StartLine > line
+
+	return tok
+}
+
+func (l *Lexer) nextToken() Token {
 	var tok Token
 
 	for {

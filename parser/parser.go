@@ -226,6 +226,13 @@ func (p *Parser) parseExpression(precendence byte) Expression {
 			return leftExp
 		}
 
+		if p.currToken.NewlineBefore {
+			switch p.currToken.Type {
+			case lexer.ASTERISK, lexer.MINUS, lexer.AMPERSAND, lexer.LPAREN, lexer.LBRACKET:
+				return leftExp
+			}
+		}
+
 		//if p.currTokenIs(lexer.SEMICOLON) {
 		//	p.NextToken()
 		//}

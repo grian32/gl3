@@ -90,7 +90,8 @@ func (p *Parser) parseType() (lexer.VarType, bool) {
 		return vt, true
 	}
 
-	for p.currTokenIs(lexer.ASTERISK) {
+	// a * on the next line is a deref starting a new statement, not another pointer level
+	for p.currTokenIs(lexer.ASTERISK) && !p.currToken.NewlineBefore {
 		vt.Pointer++
 		p.NextToken()
 	}

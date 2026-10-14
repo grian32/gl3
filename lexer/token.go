@@ -294,9 +294,10 @@ func (vt VarType) String() string {
 }
 
 type Token struct {
-	Type     TokenType
-	VarType  VarType
-	Literal  string
-	Suffix   string
-	Position util.Position
+	Type          TokenType
+	VarType       VarType
+	Literal       string
+	Suffix        string
+	Position      util.Position
+	NewlineBefore bool
 }
