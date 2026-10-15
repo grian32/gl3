@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -43,9 +44,21 @@ func TestFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	compiler := filepath.Join(t.TempDir(), "gl3")
+	exe, lib := "", ""
+	if runtime.GOOS == "windows" {
+		exe, lib = ".exe", ".dll"
+	}
+	tags := os.Getenv("GL3_BUILD_TAGS")
+	if tags == "" {
+		tags = "llvm22"
+	}
+	cc := os.Getenv("CC")
+	if cc == "" {
+		cc = "clang"
+	}
+	compiler := filepath.Join(t.TempDir(), "gl3"+exe)
 	// Build once from current sources; never accidentally test a stale ./gl3.
-	runCommand(t, root, 2*time.Minute, "go", "build", "-tags=llvm22", "-o", compiler, ".").success(t)
+	runCommand(t, root, 2*time.Minute, "go", "build", "-tags="+tags, "-o", compiler, ".").success(t)
 	fixtures := filepath.Join(root, "e2e", "testdata")
 	count := 0
 	err = filepath.WalkDir(fixtures, func(path string, entry fs.DirEntry, err error) error {
@@ -104,7 +117,10 @@ func TestFixtures(t *testing.T) {
 			for _, level := range levels {
 				t.Run(level, func(t *testing.T) {
 					work := t.TempDir()
-					output := filepath.Join(work, "program with spaces")
+					output := filepath.Join(work, "program with spaces"+exe)
+					if want.Mode == "shared" {
+						output = filepath.Join(work, "program with spaces"+lib)
+					}
 					if want.OutputPath != "" {
 						output = filepath.Join(work, want.OutputPath)
 					}
@@ -185,8 +201,23 @@ func TestFixtures(t *testing.T) {
 					}
 					if want.Mode == "shared" {
 						library := output
-						output = filepath.Join(work, "consumer")
-						runCommand(t, work, 10*time.Second, "clang", filepath.Join(filepath.Dir(path), want.Consumer), library, "-Wl,-rpath,"+work, "-o", output).success(t)
+						output = filepath.Join(work, "consumer"+exe)
+						link := []string{filepath.Join(filepath.Dir(path), want.Consumer), library, "-o", output}
+						if runtime.GOOS == "windows" {
+							// No rpath on Windows; the loader searches the executable's directory.
+							if filepath.Dir(library) != work {
+								data, err := os.ReadFile(library)
+								if err != nil {
+									t.Fatal(err)
+								}
+								if err := os.WriteFile(filepath.Join(work, filepath.Base(library)), data, 0o755); err != nil {
+									t.Fatal(err)
+								}
+							}
+						} else {
+							link = append(link, "-Wl,-rpath,"+filepath.Dir(library))
+						}
+						runCommand(t, work, 10*time.Second, cc, link...).success(t)
 					}
 					got := runCommand(t, work, 3*time.Second, output)
 					if got.code != want.Exit || got.stdout != want.Stdout || got.stderr != want.Stderr {
@@ -243,7 +274,9 @@ func runCommand(t *testing.T, dir string, timeout time.Duration, name string, ar
 	var stdout, stderr limitedOutput
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
-	r := result{command: fmt.Sprintf("%s %q", name, args), stdout: stdout.String(), stderr: stderr.String()}
+	// The Windows C runtime writes \r\n; fixtures expect \n.
+	crlf := strings.NewReplacer("\r\n", "\n")
+	r := result{command: fmt.Sprintf("%s %q", name, args), stdout: crlf.Replace(stdout.String()), stderr: crlf.Replace(stderr.String())}
 	if ctx.Err() != nil {
 		t.Fatalf("command timed out: %s\n%s%s", r.command, r.stdout, r.stderr)
 	}
