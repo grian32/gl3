@@ -95,6 +95,8 @@ jobs:
             mingw-w64-ucrt-x86_64-llvm${{ env.LLVM_VERSION }}
             mingw-w64-ucrt-x86_64-clang
             mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-libffi
+            mingw-w64-ucrt-x86_64-zstd
 
       - name: Test (Windows)
         if: runner.os == 'Windows'
@@ -107,7 +109,8 @@ jobs:
           export PATH="$PATH:$(dirname "$llvm_config")"
           CGO_CPPFLAGS="$("$llvm_config" --cppflags)"
           CGO_CXXFLAGS="$("$llvm_config" --cxxflags)"
-          CGO_LDFLAGS="$("$llvm_config" --ldflags --libs --system-libs)"
+          # MSYS2's llvm-config omits libffi and zstd from --system-libs.
+          CGO_LDFLAGS="$("$llvm_config" --ldflags --libs --system-libs) -lffi -lzstd"
           export CGO_CPPFLAGS CGO_CXXFLAGS CGO_LDFLAGS
           go version
           "$llvm_config" --version
