@@ -1,0 +1,51 @@
+name: Set up LLVM
+description: Install LLVM for statically linking gl3; source .github/scripts/llvm-env.sh before building.
+
+inputs:
+  llvm-version:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install LLVM (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      env:
+        LLVM_VERSION: ${{ inputs.llvm-version }}
+      run: |
+        wget -qO "$RUNNER_TEMP/llvm.sh" https://apt.llvm.org/llvm.sh
+        sudo bash "$RUNNER_TEMP/llvm.sh" "$LLVM_VERSION"
+        sudo apt-get install -y "llvm-$LLVM_VERSION-dev" libffi-dev libzstd-dev zlib1g-dev
+        echo "/usr/lib/llvm-$LLVM_VERSION/bin" >> "$GITHUB_PATH"
+
+    - name: Install LLVM (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      env:
+        LLVM_VERSION: ${{ inputs.llvm-version }}
+      run: brew install "llvm@$LLVM_VERSION" zstd
+
+    # Share setup-go's module/build cache with MSYS2's Go.
+    - name: Point Go caches at setup-go's (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        "GOMODCACHE=$(go env GOMODCACHE)" >> $env:GITHUB_ENV
+        "GOCACHE=$(go env GOCACHE)" >> $env:GITHUB_ENV
+
+    - name: Install MSYS2 (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        # The default llvm package isn't on our version; llvmNN installs to /ucrt64/opt/llvmNN.
+        install: >-
+          mingw-w64-ucrt-x86_64-go
+          mingw-w64-ucrt-x86_64-llvm${{ inputs.llvm-version }}
+          mingw-w64-ucrt-x86_64-clang
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-libffi
+          mingw-w64-ucrt-x86_64-zstd
+          zip

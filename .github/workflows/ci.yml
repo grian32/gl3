@@ -52,68 +52,22 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install LLVM (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          wget -qO "$RUNNER_TEMP/llvm.sh" https://apt.llvm.org/llvm.sh
-          sudo bash "$RUNNER_TEMP/llvm.sh" "$LLVM_VERSION"
-          sudo apt-get install -y "llvm-$LLVM_VERSION-dev"
-          echo "/usr/lib/llvm-$LLVM_VERSION/bin" >> "$GITHUB_PATH"
-
-      - name: Install LLVM (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install "llvm@$LLVM_VERSION"
-          # go-llvm's llvm22 tag hardcodes this prefix.
-          test -x "/opt/homebrew/opt/llvm@$LLVM_VERSION/bin/llvm-config"
+      - uses: ./.github/actions/setup-llvm
+        with:
+          llvm-version: ${{ env.LLVM_VERSION }}
 
       - name: Test (Linux, macOS)
         if: runner.os != 'Windows'
-        env:
-          GL3_BUILD_TAGS: llvm${{ env.LLVM_VERSION }}
         run: |
+          . .github/scripts/llvm-env.sh
           go test -tags="$GL3_BUILD_TAGS" ./...
           go test -tags="$GL3_BUILD_TAGS" ./e2e -count=1
-
-      # Share setup-go's module/build cache with MSYS2's Go.
-      - name: Point Go caches at setup-go's (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          "GOMODCACHE=$(go env GOMODCACHE)" >> $env:GITHUB_ENV
-          "GOCACHE=$(go env GOCACHE)" >> $env:GITHUB_ENV
-
-      - name: Install MSYS2 (Windows)
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: true
-          # The default llvm package isn't on our version; llvmNN installs to /ucrt64/opt/llvmNN.
-          install: >-
-            mingw-w64-ucrt-x86_64-go
-            mingw-w64-ucrt-x86_64-llvm${{ env.LLVM_VERSION }}
-            mingw-w64-ucrt-x86_64-clang
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-libffi
-            mingw-w64-ucrt-x86_64-zstd
 
       - name: Test (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
-        env:
-          # byollvm drops go-llvm's cgo flags; llvmNN still selects the matching API.
-          GL3_BUILD_TAGS: byollvm,llvm${{ env.LLVM_VERSION }}
         run: |
-          llvm_config="/ucrt64/opt/llvm$LLVM_VERSION/bin/llvm-config"
-          export PATH="$PATH:$(dirname "$llvm_config")"
-          CGO_CPPFLAGS="$("$llvm_config" --cppflags)"
-          CGO_CXXFLAGS="$("$llvm_config" --cxxflags)"
-          # MSYS2's llvm-config omits libffi and zstd from --system-libs.
-          CGO_LDFLAGS="$("$llvm_config" --ldflags --libs --system-libs) -lffi -lzstd"
-          export CGO_CPPFLAGS CGO_CXXFLAGS CGO_LDFLAGS
-          go version
-          "$llvm_config" --version
+          . .github/scripts/llvm-env.sh
           go test -tags="$GL3_BUILD_TAGS" ./...
           go test -tags="$GL3_BUILD_TAGS" ./e2e -count=1
 

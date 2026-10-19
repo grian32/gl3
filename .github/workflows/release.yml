@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag for a draft GitHub release (leave empty to only upload workflow artifacts)
+        type: string
+        default: ""
+
+env:
+  LLVM_VERSION: "22"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-amd64
+          - os: ubuntu-24.04-arm
+            name: linux-arm64
+          - os: macos-latest
+            name: darwin-arm64
+          - os: windows-latest
+            name: windows-amd64
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: "1"
+      CC: clang
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install LLVM (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          wget -qO "$RUNNER_TEMP/llvm.sh" https://apt.llvm.org/llvm.sh
+          sudo bash "$RUNNER_TEMP/llvm.sh" "$LLVM_VERSION"
+          sudo apt-get install -y "llvm-$LLVM_VERSION-dev"
+          echo "/usr/lib/llvm-$LLVM_VERSION/bin" >> "$GITHUB_PATH"
+
+      - name: Install LLVM (macOS)
+        if: runner.os == 'macOS'
+        run: brew install "llvm@$LLVM_VERSION"
+
+      - name: Build (Linux, macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          go build -trimpath -tags="llvm$LLVM_VERSION" -o dist/gl3 .
+          tar -czf "gl3-${{ matrix.name }}.tar.gz" -C dist gl3
+
+      - name: Point Go caches at setup-go's (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "GOMODCACHE=$(go env GOMODCACHE)" >> $env:GITHUB_ENV
+          "GOCACHE=$(go env GOCACHE)" >> $env:GITHUB_ENV
+
+      - name: Install MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-go
+            mingw-w64-ucrt-x86_64-llvm${{ env.LLVM_VERSION }}
+            mingw-w64-ucrt-x86_64-clang
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-libffi
+            mingw-w64-ucrt-x86_64-zstd
+            zip
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          llvm_config="/ucrt64/opt/llvm$LLVM_VERSION/bin/llvm-config"
+          CGO_CPPFLAGS="$("$llvm_config" --cppflags)"
+          CGO_CXXFLAGS="$("$llvm_config" --cxxflags)"
+          CGO_LDFLAGS="$("$llvm_config" --ldflags --libs --system-libs) -lffi -lzstd"
+          export CGO_CPPFLAGS CGO_CXXFLAGS CGO_LDFLAGS
+          mkdir -p dist
+          go build -trimpath -tags="byollvm,llvm$LLVM_VERSION" -o dist/gl3.exe .
+          (cd dist && zip "../gl3-${{ matrix.name }}.zip" gl3.exe)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gl3-${{ matrix.name }}
+          path: gl3-${{ matrix.name }}.*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" dist/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --draft --generate-notes
