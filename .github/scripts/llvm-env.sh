@@ -25,7 +25,9 @@ esac
 
 CGO_CPPFLAGS="$("$llvm_config" --cppflags)"
 CGO_CXXFLAGS="$("$llvm_config" --cxxflags)"
-CGO_LDFLAGS="$("$llvm_config" --link-static --ldflags --libs) $sys"
+# apt.llvm.org lists Polly but ships it separately; gl3 doesn't use it.
+libs="$("$llvm_config" --link-static --libs | sed -e 's/-lPollyISL//' -e 's/-lPolly//')"
+CGO_LDFLAGS="$("$llvm_config" --link-static --ldflags) $libs $sys"
 # byollvm drops go-llvm's cgo flags; llvmNN still selects the matching API.
 GL3_BUILD_TAGS="byollvm,llvm$LLVM_VERSION"
 export CGO_CPPFLAGS CGO_CXXFLAGS CGO_LDFLAGS GL3_BUILD_TAGS
