@@ -105,6 +105,10 @@ func (a *Analyzer) assignIDs(node parser.Node) bool {
 			return false
 		}
 
+		if node.Name.Value == "main" && (node.Type.Pointer != 0 || (node.Type.Base != lexer.Int32 && node.Type.Base != lexer.Void)) {
+			a.appendDiagnostic(node.Position(), "main function with a type other than i32 or void, %s is forbidden", node.Type)
+		}
+
 		id := hir.FunctionID(len(a.Functions))
 		a.Functions = append(a.Functions, hir.Function{
 			Name:     node.Name.Value,

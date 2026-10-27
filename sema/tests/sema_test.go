@@ -378,6 +378,8 @@ global int32 counter = 1i32`,
 			{messageContains: []string{"duplicate", "counter"}, line: 4},
 		},
 	},
+	{name: "main rejects non int return", source: `fnc main() -> uint8 { return 0u8 }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"main", "i32 or void"}, line: 1}}},
+	{name: "main rejects pointer return", source: `fnc main() -> int* { return nullptr }`, diagnostics: []expectedDiagnostic{{messageContains: []string{"main", "i32 or void"}, line: 1}}},
 }
 
 // These cases check declaration metadata; pass 2 cases check executable output.
