@@ -192,6 +192,21 @@ func (e *Emitter) Emit() error {
 			}
 		}
 	}
+	if mainFn := e.module.NamedFunction("gl3.main"); !mainFn.IsNil() {
+		wrapperMain := llvmapi.AddFunction(e.module, "main", llvmapi.FunctionType(e.context.Int32Type(), nil, false))
+		block := llvmapi.AddBasicBlock(wrapperMain, "body")
+		e.builder.SetInsertPointAtEnd(block)
+		call := e.builder.CreateCall(mainFn.GlobalValueType(), mainFn, nil, "")
+		if mainFn.GlobalValueType().ReturnType().TypeKind() == llvmapi.VoidTypeKind {
+			e.builder.CreateRet(llvmapi.ConstInt(e.context.Int32Type(), 0, false))
+			return nil
+		}
+		if strings.Contains(e.module.Target(), "windows") {
+			call = e.builder.CreateTrunc(call, e.context.Int8Type(), "")
+			call = e.builder.CreateZExt(call, e.context.Int32Type(), "")
+		}
+		e.builder.CreateRet(call)
+	}
 
 	return nil
 }

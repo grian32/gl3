@@ -25,6 +25,10 @@ func (e *Emitter) defineStruct(s *hir.Struct) error {
 }
 
 func (e *Emitter) declareFunction(function *hir.Function) error {
+	name := function.Name
+	if name == "main" {
+		name = "gl3.main"
+	}
 	paramTypes := []llvmapi.Type{}
 	for _, p := range function.Parameters {
 		lowered, err := e.lowerType(p.Type)
@@ -39,7 +43,7 @@ func (e *Emitter) declareFunction(function *hir.Function) error {
 		return err
 	}
 
-	e.functions[function.Id] = llvmapi.AddFunction(e.module, function.Name, llvmapi.FunctionType(loweredRet, paramTypes, function.Variadic))
+	e.functions[function.Id] = llvmapi.AddFunction(e.module, name, llvmapi.FunctionType(loweredRet, paramTypes, function.Variadic))
 	return nil
 }
 
