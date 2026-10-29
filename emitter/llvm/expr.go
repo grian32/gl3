@@ -3,6 +3,7 @@ package llvm
 import (
 	"fmt"
 	"gl3/hir"
+	"strings"
 
 	llvmapi "tinygo.org/x/go-llvm"
 )
@@ -222,6 +223,11 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		t, err := e.lowerType(expr.ResultType)
 		if err != nil {
 			return llvmapi.Value{}, err
+		}
+		triple := e.module.Target()
+		if strings.Contains(triple, "windows") && strings.HasPrefix(triple, "x86_64") && t == e.context.Int32Type() {
+			slot := e.builder.CreateVAArg(e.currVaList, e.context.Int64Type(), "")
+			return e.builder.CreateTrunc(slot, t, ""), nil
 		}
 		return e.builder.CreateVAArg(e.currVaList, t, ""), nil
 	}
