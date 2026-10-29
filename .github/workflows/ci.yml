@@ -27,7 +27,7 @@ jobs:
           - os: macos-latest
             experimental: false
           - os: windows-latest
-            experimental: true
+            experimental: false
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }} # removed per-OS once that OS passes
     env:
