@@ -1,2 +1,4 @@
 // e2e: {"mode":"run","exit":1}
-fnc main() -> bool { return 4000000000u32 >= 1u32 }
+fnc run() -> bool { return 4000000000u32 >= 1u32 }
+
+fnc main() -> int32 { return run() as int32 }

@@ -1,2 +1,4 @@
 // e2e: {"mode":"run","exit":98}
-fnc main() -> int8 { return 'b' }
+fnc run() -> int8 { return 'b' }
+
+fnc main() -> int32 { return run() as int32 }

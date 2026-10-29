@@ -1,2 +1,4 @@
 // e2e: {"mode":"run","exit":1}
-fnc main() -> bool { return true != false }
+fnc run() -> bool { return true != false }
+
+fnc main() -> int32 { return run() as int32 }

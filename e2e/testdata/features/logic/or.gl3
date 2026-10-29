@@ -1,3 +1,5 @@
 // e2e: {"mode":"run","exit":1}
 fnc or(bool a, bool b) -> bool { return a || b }
-fnc main() -> bool { return or(false, true) }
+fnc run() -> bool { return or(false, true) }
+
+fnc main() -> int32 { return run() as int32 }

@@ -1,5 +1,5 @@
 // e2e: {"mode":"run","exit":1}
-fnc main() -> bool {
+fnc run() -> bool {
     def bool first = true
     def bool skipped = true
     while first {
@@ -9,3 +9,5 @@ fnc main() -> bool {
     }
     return skipped
 }
+
+fnc main() -> int32 { return run() as int32 }

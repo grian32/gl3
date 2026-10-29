@@ -1,6 +1,8 @@
 // e2e: {"mode":"run","exit":7}
 extern fnc labs(int value) -> int
-fnc main() -> int {
+fnc run() -> int {
     def int8 small = -7i8
     return labs(small as int)
 }
+
+fnc main() -> int32 { return run() as int32 }

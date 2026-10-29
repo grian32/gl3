@@ -1,6 +1,8 @@
 // e2e: {"mode":"run","exit":1}
 // char is int8, so indexing a char* compares directly against a char literal.
-fnc main() -> bool {
+fnc run() -> bool {
     def char* text = "abc"
     return text[1] == 'b'
 }
+
+fnc main() -> int32 { return run() as int32 }

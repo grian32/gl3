@@ -1,3 +1,5 @@
 // e2e: {"mode":"run","exit":103}
 global char letter = 'g'
-fnc main() -> char { return letter }
+fnc run() -> char { return letter }
+
+fnc main() -> int32 { return run() as int32 }

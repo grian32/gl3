@@ -1,2 +1,4 @@
 // e2e: {"mode":"run","exit":5}
-fnc main() -> uint8 { return ~250u8 }
+fnc run() -> uint8 { return ~250u8 }
+
+fnc main() -> int32 { return run() as int32 }

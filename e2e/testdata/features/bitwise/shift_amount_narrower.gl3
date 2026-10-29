@@ -1,3 +1,5 @@
 // e2e: {"mode":"run","exit":8}
 // A narrower amount is widened to the left operand type.
-fnc main() -> uint { return 1u64 << 3i8 }
+fnc run() -> uint { return 1u64 << 3i8 }
+
+fnc main() -> int32 { return run() as int32 }
