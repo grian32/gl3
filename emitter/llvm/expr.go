@@ -229,9 +229,71 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 			slot := e.builder.CreateVAArg(e.currVaList, e.context.Int64Type(), "")
 			return e.builder.CreateTrunc(slot, t, ""), nil
 		}
+		if (strings.HasPrefix(triple, "aarch64") || strings.HasPrefix(triple, "arm64")) &&
+			!strings.HasPrefix(triple, "aarch64_be") &&
+			!strings.Contains(triple, "windows") && !strings.Contains(triple, "apple") &&
+			!strings.Contains(triple, "darwin") {
+			return e.emitAArch64LinuxVarArg(t), nil
+		}
+
 		return e.builder.CreateVAArg(e.currVaList, t, ""), nil
 	}
 	panic("emitter: emitExpr not implemented")
+}
+
+func (e *Emitter) emitAArch64LinuxVarArg(t llvmapi.Type) llvmapi.Value {
+	ptr := llvmapi.PointerType(e.context.Int8Type(), 0)
+	i8, i32, i64 := e.context.Int8Type(), e.context.Int32Type(), e.context.Int64Type()
+
+	f := e.builder.GetInsertBlock().Parent()
+	maybeRegBlock := llvmapi.AddBasicBlock(f, "vararg.maybe_reg")
+	inRegBlock := llvmapi.AddBasicBlock(f, "vararg.in_reg")
+	onStackBlock := llvmapi.AddBasicBlock(f, "vararg.on_stack")
+	endBlock := llvmapi.AddBasicBlock(f, "vararg.end")
+	/*
+		  aarch64 valist:
+		  struct{
+		    void* __stack
+			void* __gr_top
+			void* __vr_top
+			int __gr_offs
+			int __vr_offs
+		  }
+	*/
+	offsIdx, topIdx, regSize := 3, 1, 8 // __gr_offs, __gr_top
+	if t.TypeKind() == llvmapi.DoubleTypeKind {
+		offsIdx, topIdx, regSize = 4, 2, 16 // __vr_offs, __vr_top
+	}
+
+	offsPtr := e.builder.CreateStructGEP(e.vaList, e.currVaList, offsIdx, "")
+	offs := e.builder.CreateLoad(i32, offsPtr, "")
+	usingStack := e.builder.CreateICmp(llvmapi.IntSGE, offs, llvmapi.ConstInt(i32, 0, false), "")
+	e.builder.CreateCondBr(usingStack, onStackBlock, maybeRegBlock)
+
+	e.builder.SetInsertPointAtEnd(maybeRegBlock)
+	newOffs := e.builder.CreateAdd(offs, llvmapi.ConstInt(i32, uint64(regSize), false), "")
+	e.builder.CreateStore(newOffs, offsPtr)
+	fits := e.builder.CreateICmp(llvmapi.IntSLE, newOffs, llvmapi.ConstInt(i32, 0, false), "")
+	e.builder.CreateCondBr(fits, inRegBlock, onStackBlock)
+
+	e.builder.SetInsertPointAtEnd(inRegBlock)
+	topP := e.builder.CreateStructGEP(e.vaList, e.currVaList, topIdx, "")
+	top := e.builder.CreateLoad(ptr, topP, "")
+	regAddr := e.builder.CreateInBoundsGEP(i8, top, []llvmapi.Value{offs}, "")
+	e.builder.CreateBr(endBlock)
+
+	e.builder.SetInsertPointAtEnd(onStackBlock)
+	stackP := e.builder.CreateStructGEP(e.vaList, e.currVaList, 0, "")
+	stack := e.builder.CreateLoad(ptr, stackP, "")
+	next := e.builder.CreateInBoundsGEP(i8, stack, []llvmapi.Value{llvmapi.ConstInt(i64, 8, false)}, "")
+	e.builder.CreateStore(next, stackP)
+	e.builder.CreateBr(endBlock)
+
+	e.builder.SetInsertPointAtEnd(endBlock)
+	addr := e.builder.CreatePHI(ptr, "")
+	addr.AddIncoming([]llvmapi.Value{regAddr, stack}, []llvmapi.BasicBlock{inRegBlock, onStackBlock})
+
+	return e.builder.CreateLoad(t, addr, "")
 }
 
 func (e *Emitter) emitPlace(place hir.Place) (llvmapi.Value, error) {
