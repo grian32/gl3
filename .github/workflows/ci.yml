@@ -23,7 +23,7 @@ jobs:
             experimental: false
           # experimental gets removed per-OS once that OS passes.
           - os: ubuntu-24.04-arm
-            experimental: true
+            experimental: false
           - os: macos-latest
             experimental: false
           - os: windows-latest
