@@ -1,0 +1,1 @@
+extern fnc __salloc(int count, uint size) -> none*

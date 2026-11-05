@@ -1,0 +1,25 @@
+// e2e: {"mode":"run","exit":42}
+import "intrinsics"
+
+// bigger than a pointer, so the buffer has to be sized from the element type
+struct Big {
+    int a
+    int b
+    int c
+    int d
+    int e
+    int f
+}
+
+fnc main() -> int32 {
+    def int canary = 7
+    def Big* items = __salloc(2, sizeof Big)
+    def int i = 0
+    while i < 2 {
+        items[i] = Big:{ 1, 2, 3, 4, 5, 42 }
+        i += 1
+    }
+    if canary != 7 { return 1i32 }
+    if items[0].a != 1 { return 2i32 }
+    return items[1].f as int32
+}

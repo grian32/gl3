@@ -379,6 +379,15 @@ type Sizeof struct {
 
 func (*Sizeof) exprNode() {}
 
+// StackAlloc is a fixed-size array in the current function's frame. ResultType
+// is a pointer to the element type.
+type StackAlloc struct {
+	ExprInfo
+	Count uint64
+}
+
+func (*StackAlloc) exprNode() {}
+
 type If struct {
 	Condition Expr
 	Then      Block

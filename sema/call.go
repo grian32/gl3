@@ -6,7 +6,7 @@ import (
 	"gl3/util"
 )
 
-func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) {
+func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (hir.Expr, bool) {
 	fncName := callExpr.Function.Value
 	fnc, ok := a.resolveSymbol(fncName)
 	if !ok {
@@ -20,6 +20,38 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 	}
 
 	fncNode := a.Functions[int(fnc.(hir.FunctionID))]
+
+	if fncNode.Name == "__salloc" && fncNode.External {
+		if a.currentFunction == nil {
+			a.appendDiagnostic(callExpr.Position(), "cannot call __salloc intrinsic outside of a function")
+			return nil, false
+		}
+		if len(callExpr.Params) != 2 {
+			a.appendDiagnostic(callExpr.Position(), "intrinsic __salloc expects 2 arguments")
+			return nil, false
+		}
+
+		intExpr, ok := callExpr.Params[0].(*parser.IntegerLiteral)
+		if !ok || intExpr.UValue == 0 {
+			a.appendDiagnostic(callExpr.Position(), "intrinsic __salloc expects a positive integer literal as its first argument")
+			return nil, false
+		}
+
+		sizeOfExpr, ok := callExpr.Params[1].(*parser.SizeofExpression)
+		if !ok {
+			a.appendDiagnostic(callExpr.Position(), "intrinsic __salloc expects a sizeof expression as its second argument")
+			return nil, false
+		}
+
+		sizeOf, ok := a.checkSizeof(sizeOfExpr)
+		if !ok {
+			return nil, false
+		}
+		ptr := sizeOf.OperandType
+		ptr.Pointer++
+		return &hir.StackAlloc{ExprInfo: hir.ExprInfo{ResultType: ptr}, Count: intExpr.UValue}, true
+	}
+
 	if fncNode.Variadic {
 		if len(callExpr.Params) < len(fncNode.Parameters) {
 			a.appendDiagnostic(callExpr.Position(), "function `%s` expects at least %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
@@ -30,6 +62,7 @@ func (a *Analyzer) checkCall(callExpr *parser.CallExpression) (*hir.Call, bool) 
 		a.appendDiagnostic(callExpr.Position(), "function `%s` expects %d arguments, got %d.", fncName, len(fncNode.Parameters), len(callExpr.Params))
 		return nil, false
 	}
+
 	var args []hir.Expr
 	badParam := false
 	for i, p := range callExpr.Params {

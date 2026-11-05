@@ -237,6 +237,22 @@ func (e *Emitter) emitExpr(expr hir.Expr) (llvmapi.Value, error) {
 		}
 
 		return e.builder.CreateVAArg(e.currVaList, t, ""), nil
+	case *hir.StackAlloc:
+		hElemType := expr.ResultType
+		hElemType.Pointer--
+		elemType, err := e.lowerType(hElemType)
+		if err != nil {
+			return llvmapi.Value{}, err
+		}
+		t := llvmapi.ArrayType(elemType, int(expr.Count))
+		current := e.builder.GetInsertBlock()
+		entry := current.Parent().EntryBasicBlock()
+		if first := entry.FirstInstruction(); !first.IsNil() {
+			e.builder.SetInsertPointBefore(first)
+		}
+		alloca := e.builder.CreateAlloca(t, "")
+		e.builder.SetInsertPointAtEnd(current)
+		return alloca, nil
 	}
 	panic("emitter: emitExpr not implemented")
 }
