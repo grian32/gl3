@@ -13,9 +13,9 @@ def int32 x = 10i32  // inline comment
 
 ### Semicolons
 
-Semicolons are optional statement terminators. They may be omitted entirely.
+Semicolons are optional statement terminators. The one place you need one is a bare `return` followed by another statement, which must be written `return;` (see [Functions](#functions)).
 
-Global variable definitions are not statement terminators and therefore cannot end with `;`.
+Top-level declarations (imports, functions, structs, `extern` declarations and global variables) are not statements, so they cannot end with `;`.
 
 ```gl3
 def int32 x = 10i32
@@ -510,7 +510,7 @@ fnc sum(int32 count, ...) -> int {
 }
 
 fnc main() -> int32 {
-    printf("%d\n", sum(3i32, 1, 2, 3))
+    printf("%ld\n", sum(3i32, 1, 2, 3))
     return 0i32
 }
 ```
@@ -608,7 +608,7 @@ Typical structure:
 2. Struct definitions
 3. Global variable definitions
 4. Function definitions
-5. `main` function returning `int32`
+5. `main` function returning `int32` or `none`
 
 ```gl3
 import "arrays"
