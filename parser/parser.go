@@ -160,6 +160,7 @@ func (p *Parser) ParseProgram() *Program {
 			program.Statements = append(program.Statements, stmt)
 		}
 	}
+	p.Errors = append(p.Errors, p.lexer.Errors...)
 
 	return program
 }

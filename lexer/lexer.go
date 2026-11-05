@@ -16,6 +16,7 @@ type Lexer struct {
 	currCh   uint32
 
 	Warnings []util.PositionError
+	Errors   []util.PositionError
 }
 
 func New(input string) *Lexer {
@@ -239,17 +240,26 @@ func (l *Lexer) nextToken() Token {
 			}
 			l.readChar()
 			tok.Type = CHAR
-			if l.ch == '\'' {
-				tok.Literal = ""
-			} else {
+			var buf []byte
+			for l.ch != '\'' && l.ch != '\n' && l.ch != 0 {
 				ch := l.ch
 				if ch == '\\' {
 					ch = l.readEscape()
 				}
-				tok.Literal = string(ch)
-				l.readChar() // skip next '
+				buf = append(buf, ch)
+				l.readChar()
 			}
+			tok.Literal = string(buf)
 			tok.Position.EndCol = l.currCh
+			pos := tok.Position
+			if l.ch != '\'' {
+				l.Errors = append(l.Errors, util.PositionError{Position: &pos, Msg: "unterminated character literal"})
+				// leave the newline for the whitespace loop so it still counts the line
+				return tok
+			}
+			if len(buf) > 1 {
+				l.Errors = append(l.Errors, util.PositionError{Position: &pos, Msg: "character literal must contain exactly one character"})
+			}
 		}
 	}
 
