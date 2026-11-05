@@ -51,7 +51,7 @@ fnc main() -> int32 {
 
     def Node* cur = a
     while (cur as int) != 0 {
-        println("hello, %s", *cur.name)
+        println("hello, %s", cur.name)
         cur = cur.next
     }
 

@@ -43,22 +43,25 @@ Example:
 
 ```gl3
 // math.gl3
-global int answer = 42
+global const int answer = 42
 
 struct Pair {
     int left
     int right
 }
 
-func int add(int a, int b) {
+fnc add(int a, int b) -> int {
     return a + b
 }
 
 // main.gl3
 import "math.gl3"
 
-def int x = add(answer, 8)
-def Pair p = Pair:{ 1, 2 }
+fnc main() -> int32 {
+    def int x = add(answer, 8)
+    def Pair p = Pair:{ 1, 2 }
+    return 0i32
+}
 ```
 
 ## Data Types
@@ -363,7 +366,7 @@ Cast between compatible types using `as`.
 
 ```gl3
 def int32 x = 10i32
-def int64 y = x as int
+def int y = x as int
 def int8 small = 255u8 as int8
 def int32* ptr = (arr_new((sizeof int32))) as int32*
 ```
@@ -383,8 +386,8 @@ def int32* back = raw as int32*
 Returns the byte size of a type.
 
 ```gl3
-def int size = sizeof int32
-def int struct_size = sizeof Point
+def uint size = sizeof int32
+def uint struct_size = sizeof Point
 ```
 
 ## Control Flow
