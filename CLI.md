@@ -13,7 +13,7 @@ gl3 [command] [--flags]
 | Command | Description |
 | ------- | ----------- |
 | `build` | Compile GL3 files to an executable |
-| `exdef` | Extract `#define` values from a C header into a `.gl3` file |
+| `exdef` | Experimental: extract `#define` values from a C header into a `.gl3` file |
 | `completion` | Generate the autocompletion script for a shell |
 | `help` | Show help for a command |
 
@@ -58,6 +58,8 @@ Builtin modules are always compiled at optimization level 3. The optimization fl
 ```
 
 ## `exdef`
+
+> **Experimental**: `exdef` fails on many headers, and its output may need manual fixes before it compiles.
 
 Extract `#define` statements from a C header file and emit them as constants in a `.gl3` file.
 
