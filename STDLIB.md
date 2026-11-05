@@ -248,36 +248,41 @@ fnc main() -> int32 {
 }
 ```
 
-## asm - Low-Level Operations
+## intrinsics - Compiler Intrinsics
 
-Functions that generate LLVM IR directly for scenarios requiring precise control, such as OS development before a memory allocator is available.
+Compiler intrinsics for scenarios requiring precise control, such as OS development before a memory allocator is available.
 
 ### Functions
 
-| Function                    | Parameters                    | Returns |
-|-----------------------------|-------------------------------|---------|
-| `__asm__salloc(count, sz)`  | int64, int64                  | void*   |
+| Function                    | Parameters                        | Returns |
+|-----------------------------|-----------------------------------|---------|
+| `__salloc(count, sizeof T)` | integer literal, `sizeof` a type  | T*      |
 
-### __asm__salloc
+### __salloc
 
-Statically allocates an array. Parameters:
-- `count`: number of elements
-- `sz`: size of each element (must use `sizeof`)
+Allocates a fixed-size array on the stack of the calling function. Parameters:
+- `count`: number of elements, which must be a positive integer literal
+- `sizeof T`: the element type, which must be written as a `sizeof` expression
 
 ```gl3
-import "asm"
+import "intrinsics"
 
 fnc main() -> int32 {
-    // allocate static array of 10 int32 values
-    def int32* arr = __asm__salloc(10, sizeof int32)
-    
+    // allocate 10 int32 values on the stack
+    def int32* arr = __salloc(10, sizeof int32)
+
     arr[0] = 1i32
     arr[1] = 2i32
-    
-    // no need to free - static allocation
-    
+
+    // no need to free, the memory goes away when main returns
+
     return 0i32
 }
 ```
 
-This function exists for specific low-level use cases such as OS kernel development before an allocator exists. For general programming, use the `arrays` module.
+- The memory is only valid until the calling function returns, so don't return the pointer or store it anywhere that outlives the call.
+- The memory is uninitialized.
+- Each call site has one buffer per function call, so calling it in a loop reuses the same memory on every iteration rather than growing the stack.
+- Never pass the pointer to `free` or `arr_free`.
+
+Use it where you need fixed-size memory without the heap, such as OS kernel code before an allocator exists. For a growable array, use the `arrays` module.
