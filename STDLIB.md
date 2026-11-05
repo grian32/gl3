@@ -222,11 +222,11 @@ Formatted output helpers for writing text to standard output.
 | `%y`      | int8 |
 | `%w`      | int16 |
 | `%d`      | int32 |
-| `%l`      | int64 |
+| `%l`      | int |
 | `%uy`     | uint8 |
 | `%uw`     | uint16 |
 | `%ud`     | uint32 |
-| `%ul`     | uint64 |
+| `%ul`     | uint |
 | `%%`      | literal percent sign |
 
 Prefix integer specifiers with `f` to include the type suffix in output (for example, `%fd` prints `7i32`, while `%d` prints `7`).
