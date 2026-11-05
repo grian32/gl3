@@ -1,6 +1,6 @@
 # GL3
 
-GL3 is an LLVM-based compiler for a systems programming language. The compiler is written in Go and uses the llir/llvm library for code generation.
+GL3 is an LLVM-based compiler for a systems programming language. The compiler is written in Go and uses the [go-llvm](https://github.com/tinygo-org/go-llvm) bindings for code generation.
 
 ## Philosophy
 
@@ -12,11 +12,12 @@ GL3 makes deliberate design choices that differ from many modern languages:
 
 ## Building
 
-The compiler produces LLVM IR which is then compiled to a native executable using `clang`. Clang is required for a full compilation pipeline.
+The compiler uses LLVM to generate an object file for each module, then links them into a native executable using `clang`. Clang is required for linking.
 
 ### Requirements
 
 - Go >=1.25.5
+- LLVM 22 development libraries
 - Clang (tested with version 22.1.1)
 
 ### Building the compiler
@@ -25,7 +26,7 @@ The compiler produces LLVM IR which is then compiled to a native executable usin
 make
 ```
 
-This compiles the stdlib builtin modules to LLVM IR and builds the `gl3` compiler binary. You can also cleanup any build files using `make clean`
+This builds the `gl3` compiler binary, with the stdlib builtin modules embedded in it. You can remove the binary using `make clean`.
 
 ## Example Program
 
