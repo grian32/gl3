@@ -33,6 +33,7 @@ func main() {
 	}
 	buildCmd.Flags().BoolVar(&buildOpts.Dbg, "dbg", false, "Print LLVM IR for each module and the linker command")
 	buildCmd.Flags().BoolVar(&buildOpts.Shared, "shared", false, "Compiles the code as a shared library")
+	buildCmd.Flags().StringArrayVar(&buildOpts.LdFlags, "ldflag", nil, "Pass an argument to clang when linking (repeatable)")
 	buildCmd.Flags().StringVarP(&buildOpts.Output, "output", "o", "./out", "Changes the name of the output executable")
 	buildCmd.Flags().StringVar(&buildOpts.Emitter, "emitter", "llvm", "Code emitter (available: llvm)")
 	buildCmd.Flags().BoolVar(&buildOpts.O1, "O1", false, "Compiles the code with optimization level 1")

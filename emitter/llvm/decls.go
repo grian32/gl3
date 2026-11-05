@@ -43,7 +43,12 @@ func (e *Emitter) declareFunction(function *hir.Function) error {
 		return err
 	}
 
-	e.functions[function.Id] = llvmapi.AddFunction(e.module, name, llvmapi.FunctionType(loweredRet, paramTypes, function.Variadic))
+	fn := llvmapi.AddFunction(e.module, name, llvmapi.FunctionType(loweredRet, paramTypes, function.Variadic))
+	// a private extern is still defined elsewhere, so it has to stay external
+	if function.Private && !function.External {
+		fn.SetLinkage(llvmapi.InternalLinkage)
+	}
+	e.functions[function.Id] = fn
 	return nil
 }
 
@@ -54,6 +59,10 @@ func (e *Emitter) declareGlobal(global *hir.Global) error {
 	}
 	g := llvmapi.AddGlobal(e.module, lowered, global.Name)
 	g.SetGlobalConstant(global.Constant)
+	// only global const is visible to importers, so everything else stays local to its module
+	if !global.Constant {
+		g.SetLinkage(llvmapi.InternalLinkage)
+	}
 
 	if global.Initializer != nil {
 		init, err := e.emitExpr(global.Initializer)

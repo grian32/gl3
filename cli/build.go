@@ -20,6 +20,7 @@ import (
 type BuildOpts struct {
 	Dbg     bool
 	Shared  bool
+	LdFlags []string
 	Output  string
 	Emitter string
 	O1      bool
@@ -95,7 +96,7 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 		}
 		objects = append(objects, objectPath)
 	}
-	return linkObjects(objects, output, opts.Shared, opts.Dbg)
+	return linkObjects(objects, opts.LdFlags, output, opts.Shared, opts.Dbg)
 }
 
 type compiledModule struct {

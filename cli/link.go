@@ -7,12 +7,14 @@ import (
 	"strings"
 )
 
-func linkObjects(objects []string, output string, shared, debug bool) error {
-	args := make([]string, 0, len(objects)+3)
+func linkObjects(objects []string, ldflags []string, output string, shared, debug bool) error {
+	args := make([]string, 0, len(objects)+len(ldflags)+3)
 	if shared {
 		args = append(args, "-shared")
 	}
 	args = append(args, objects...)
+	// after the objects, since linkers resolve static libraries left to right
+	args = append(args, ldflags...)
 	args = append(args, "-o", output)
 	if debug {
 		fmt.Fprintf(os.Stderr, "clang %q\n", args)

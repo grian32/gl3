@@ -43,6 +43,7 @@ gl3 build [--flags]
 | `--O3` | Requests optimization level 3 |
 | `-o`, `--output` | Path of the output executable (default `./out`) |
 | `--shared` | Compile the code as a shared library |
+| `--ldflag` | Pass one argument to `clang` when linking. Repeat it for each argument, for example `--ldflag -lGL` or `--ldflag -framework --ldflag OpenGL` |
 | `--emitter` | Code generation backend (default `llvm`, currently the only option) |
 | `-h`, `--help` | Show help for `build` |
 
