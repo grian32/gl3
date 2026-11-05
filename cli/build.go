@@ -71,7 +71,11 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 	defer ctx.closeEmitters()
 	var objects []string
 	for i, module := range ctx.order {
-		module.emitter, err = llvmemitter.New(module.Program, module.path, optimization)
+		moduleOptimization := optimization
+		if strings.HasPrefix(module.path, builtinPrefix) {
+			moduleOptimization = 3
+		}
+		module.emitter, err = llvmemitter.New(module.Program, module.path, moduleOptimization)
 		if err != nil {
 			return fmt.Errorf("%s: %w", module.path, err)
 		}
