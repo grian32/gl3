@@ -249,6 +249,16 @@ global int32 max_items = 128i32
 global char* app_name = "grianlang"
 ```
 
+Initializers must be constant expressions, such as literals, `sizeof`, casts of those, and struct literals made of them. A function call is an error.
+
+`global const` declares a global that cannot be assigned to. Only `global const` definitions are visible to files that import this one; a plain `global` stays private to its own file. `const` cannot be used on `def`.
+
+```gl3
+global const int32 MAX_ITEMS = 128i32
+
+MAX_ITEMS = 1i32    // error: modifying constant globals is not permitted
+```
+
 > **Note**: Global variable definitions are top-level declarations outside functions, so they cannot end with `;`.
 
 ## Assignment
@@ -578,7 +588,7 @@ private extern struct Handle
 
 - `private` works on `fnc`, `extern fnc`, `struct` and `extern struct`.
 - Two files can each have a private declaration with the same name, and an importer can define its own declaration with that name.
-- A public function cannot use a private struct in its parameters or return type, and a `global const` cannot have a private struct type: `fnc make() -> Spec` is an error if `Spec` is private.
+- A public function cannot use a private struct in its parameters or return type, a public struct cannot use one in its fields, and a `global const` cannot have a private struct type: `fnc make() -> Spec` is an error if `Spec` is private. This also applies to pointers to a private struct.
 
 ## Pointers
 

@@ -14,6 +14,7 @@ gl3 [command] [--flags]
 | ------- | ----------- |
 | `build` | Compile GL3 files to an executable |
 | `exdef` | Extract `#define` values from a C header into a `.gl3` file |
+| `completion` | Generate the autocompletion script for a shell |
 | `help` | Show help for a command |
 
 ### Top-level flags
@@ -30,7 +31,7 @@ Compile GL3 files to an executable.
 ### Usage
 
 ```text
-gl3 build [--flags]
+gl3 build [--flags] <files>
 ```
 
 ### Flags
