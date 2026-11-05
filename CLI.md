@@ -37,16 +37,16 @@ gl3 build [--flags]
 
 | Flag | Description |
 | ---- | ----------- |
-| `--dbg` | Print the AST and LLVM IR for all compiled files, along with the `clang` command used for compilation |
+| `--dbg` | Print the LLVM IR for all compiled files, along with the `clang` command used for linking |
 | `--O1` | Compiles the code with optimization level 1 |
 | `--O2` | Requests optimization level 2 |
 | `--O3` | Requests optimization level 3 |
-| `--noexecbuild` | Generate LLVM IR without running the `clang` build step |
+| `-o`, `--output` | Path of the output executable (default `./out`) |
+| `--shared` | Compile the code as a shared library |
+| `--emitter` | Code generation backend (default `llvm`, currently the only option) |
 | `-h`, `--help` | Show help for `build` |
 
-Builtin processing currently mutates the optimization options and can force `--O3`
-when a program imports a builtin module. The e2e optimization comparisons use
-programs without builtin imports to exercise distinct default and optimized builds.
+Builtin modules are always compiled at optimization level 3. The optimization flags only apply to your own files.
 
 ### Example
 
