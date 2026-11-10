@@ -7,7 +7,7 @@ case "$(uname -s)" in
         LIB_NAME="libadd.dylib"
         ;;
     Linux)
-        LIB_NAME="libadd.SO"
+        LIB_NAME="libadd.so"
         ;;
     *)
         exit 1
