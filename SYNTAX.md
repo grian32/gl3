@@ -32,7 +32,7 @@ def int32 b = 20i32;
 Import statements load standard library modules or other GL3 source files.
 
 For `.gl3` file imports, the imported names are the target file's top-level function definitions, struct definitions, and global constant definitions.
-Standard library modules may expose whatever they want, though in practice they usually only import functions.
+Standard library modules may expose whatever they want, though in practice they usually only export functions.
 
 ```gl3
 import "module"      // standard library module
@@ -212,7 +212,7 @@ Array literals are syntactic sugar that expand to dynamic array operations, so t
 [int32; 1i32, 2i32, 3i32]
 ```
 
-This is equivalent to creating a new array and pushing each element. Requires the `arrays` module.
+This is equivalent to creating a new array and pushing each element.
 
 ## Variable Declarations
 

@@ -40,8 +40,8 @@ gl3 build [--flags] <files>
 | ---- | ----------- |
 | `--dbg` | Print the LLVM IR for all compiled files, along with the `clang` command used for linking |
 | `--O1` | Compiles the code with optimization level 1 |
-| `--O2` | Requests optimization level 2 |
-| `--O3` | Requests optimization level 3 |
+| `--O2` | Compiles the code with optimization level 2 |
+| `--O3` | Compiles the code with optimization level 3 |
 | `-o`, `--output` | Path of the output executable (default `./out`) |
 | `--shared` | Compile the code as a shared library |
 | `--ldflag` | Pass one argument to `clang` when linking. Repeat it for each argument, for example `--ldflag -lGL` or `--ldflag -framework --ldflag OpenGL` |
