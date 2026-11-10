@@ -1,0 +1,138 @@
+// A quick tour of gl3: structs, pointers, globals, flags, variadics,
+// dynamic arrays, strings, stack allocation and float bit patterns.
+import "io"
+import "arrays"
+import "strings"
+import "ralloc"
+import "math"
+import "intrinsics"
+
+global const uint8 FLAG_DONE = 1u8
+global const uint8 FLAG_URGENT = 2u8
+global int32 tasks_made = 0i32
+
+struct Task {
+    char* name
+    int32 cost
+    uint8 flags
+    Task* next
+}
+
+// private: only visible inside this file
+private fnc new_task(char* name, int32 cost, uint8 flags) -> Task* {
+    def Task* t = malloc(sizeof Task) as Task*
+    t.name = dynstr(name)
+    t.cost = cost
+    t.flags = flags
+    t.next = nullptr
+    tasks_made += 1i32
+    return t
+}
+
+// variadic: sums `count` int32 arguments
+fnc sum(int32 count, ...) -> int32 {
+    def int32 total = 0i32
+    def int32 i = 0i32
+    while i < count {
+        total += vararg int32
+        i += 1i32
+    }
+    return total
+}
+
+fnc linked_lists() -> none {
+    println("-- linked list --")
+    def Task* head = new_task("write parser", 5i32, FLAG_DONE)
+    head.next = new_task("fix codegen", 8i32, FLAG_URGENT)
+    head.next.next = new_task("write docs", 3i32, FLAG_DONE | FLAG_URGENT)
+
+    def int32 remaining = 0i32
+    def Task* cur = head
+    while cur != nullptr {
+        def char* status = "todo"
+        if cur.flags & FLAG_DONE == FLAG_DONE {
+            status = "done"
+        } else if cur.flags & FLAG_URGENT == FLAG_URGENT {
+            status = "URGENT"
+            remaining += cur.cost
+        } else {
+            remaining += cur.cost
+        }
+        println("  %s [%s] cost=%fd", cur.name, status, cur.cost)
+        cur = cur.next
+    }
+    println("  remaining cost: %d (of %d tasks made)", remaining, tasks_made)
+
+    while head != nullptr {
+        def Task* next = head.next
+        str_free(head.name)
+        free(head)
+        head = next
+    }
+}
+
+fnc dynamic_arrays() -> none {
+    println("-- dynamic arrays --")
+    def int32* primes = [int32; 2i32, 3i32, 5i32, 7i32]
+    def int32 n = 11i32
+    while n < 40i32 {
+        def int32 d = 2i32
+        def bool prime = true
+        while d * d <= n {
+            if n % d == 0i32 {
+                prime = false
+                break
+            }
+            d += 1i32
+        }
+        if prime { arr_push(&primes, &n) }
+        n += 2i32
+    }
+
+    print("  primes:")
+    def int i = 0
+    while i < 12 {
+        print(" %d", primes[i])
+        i += 1
+    }
+    println("")
+    arr_free(&primes)
+}
+
+fnc strings_and_bits() -> none {
+    println("-- strings & bits --")
+    def char* greeting = str_append("hello, ", "gl3")
+    println("  %s (len %ul)", greeting, str_len(greeting))
+    str_free(greeting)
+
+    def uint32 mask = 0u32
+    mask |= 1u32 << 3
+    mask |= 1u32 << 7
+    mask ^= 0xFFu32
+    println("  mask: %ud, top bit of 0x80000000: %ud", mask, 0x80000000u32 >> 31)
+
+    def uint bits = float_bits(-2.5)
+    println("  -2.5 is negative: %b, as int: %l", bits >> 63 == 1u64, -2.5 as int)
+    println("  sum(1..5) = %d", sum(5i32, 1i32, 2i32, 3i32, 4i32, 5i32))
+}
+
+fnc stack_buffers() -> none {
+    println("-- stack buffers --")
+    // fixed-size buffer on the stack, no heap and no free
+    def char* buf = __salloc(27, sizeof char)
+    def int32 i = 0i32
+    while i < 26i32 {
+        buf[i] = ('a' as int32 + i) as char
+        i += 1i32
+    }
+    buf[26] = '\0'
+    println("  %s", buf)
+}
+
+fnc main() -> int32 {
+    linked_lists()
+    dynamic_arrays()
+    strings_and_bits()
+    stack_buffers()
+    return 0i32
+}
