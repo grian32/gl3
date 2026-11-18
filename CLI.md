@@ -48,7 +48,7 @@ gl3 build [--flags] <files>
 | `--emitter` | Code generation backend (default `llvm`, currently the only option) |
 | `-h`, `--help` | Show help for `build` |
 
-Builtin modules are always compiled at optimization level 3. The optimization flags only apply to your own files.
+Only one of `--O1`, `--O2` and `--O3` may be passed; without any of them, your files are compiled at optimization level 0. Builtin modules are always compiled at optimization level 3. The optimization flags only apply to your own files.
 
 ### Example
 

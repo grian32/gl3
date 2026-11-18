@@ -12,7 +12,7 @@ Dynamic heap-allocated arrays with automatic resizing.
 | `arr_push(&arr, &elem)` | none* (pointer to the array), none* (element to copy) | none |
 | `arr_free(&arr)`        | none* (pointer to the array)  | none     |
 
-`arr_push` copies `size` bytes from `elem` into the array, growing it when full. It may move the array, which is why it takes a pointer to the array pointer.
+`arr_push` copies the element size given to `arr_new` from `elem` into the array, growing it when full. It may move the array, which is why it takes a pointer to the array pointer.
 
 **Always pass `&arr`, not `arr`.** Both parameters are `none*`, and any pointer converts to `none*` implicitly, so `arr_push(arr, &val)` compiles. It then reads the hidden metadata from the wrong place and corrupts memory.
 
@@ -127,7 +127,7 @@ fnc main() -> int32 {
 
 ## ralloc - Raw Allocation
 
-Low-level heap allocation functions that vendor C's `malloc`, `calloc`, and `free`.
+Low-level heap allocation functions that expose C's `malloc`, `calloc`, and `free`.
 
 ### Functions
 

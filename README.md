@@ -47,10 +47,10 @@ fnc main() -> int32 {
     a.name = dynstr("alice")
     a.next = b
     b.name = dynstr("bob")
-    b.next = (0 as Node*)
+    b.next = nullptr
 
     def Node* cur = a
-    while (cur as int) != 0 {
+    while cur != nullptr {
         println("hello, %s", cur.name)
         cur = cur.next
     }

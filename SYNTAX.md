@@ -4,7 +4,7 @@
 
 ### Comments
 
-Single-line comments begin with `//` and extend to the end of the line.
+Single-line comments begin with `//` and extend to the end of the line. There are no block comments (`/* */`).
 
 ```gl3
 // this is a comment
@@ -586,7 +586,7 @@ private extern fnc strlen(char* s) -> uint
 private extern struct Handle
 ```
 
-- `private` works on `fnc`, `extern fnc`, `struct` and `extern struct`.
+- `private` works on `fnc`, `extern fnc`, `struct` and `extern struct`. It cannot be used on globals: a plain `global` is already private to its file, and `private global const` is an error.
 - Two files can each have a private declaration with the same name, and an importer can define its own declaration with that name.
 - A public function cannot use a private struct in its parameters or return type, a public struct cannot use one in its fields, and a `global const` cannot have a private struct type: `fnc make() -> Spec` is an error if `Spec` is private. This also applies to pointers to a private struct.
 
