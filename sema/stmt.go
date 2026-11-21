@@ -42,7 +42,9 @@ func statementFallsThrough(stmt hir.Stmt) bool {
 	}
 }
 
+// checkBodies keeps going after a failed global or function so every one of them gets reported
 func (a *Analyzer) checkBodies() bool {
+	valid := true
 	a.currentScope = &Scope{
 		Symbols: a.Symbols,
 		Parent:  nil,
@@ -52,18 +54,21 @@ func (a *Analyzer) checkBodies() bool {
 		g := &a.Globals[i]
 		initExpr, ok := a.checkExpr(a.globalInitializers[g.Id])
 		if !ok {
-			return false
+			valid = false
+			continue
 		}
 
 		initExpr = coerce(initExpr, g.Type)
 		if g.Type != initExpr.Type() {
 			a.appendDiagnostic(a.globalPositions[g.Id], "invalid initializer of type `%s` for global `%s` with declared type `%s`", initExpr.Type(), g.Name, g.Type)
-			return false
+			valid = false
+			continue
 		}
 
 		if !isConstantInitializer(initExpr) {
 			a.appendDiagnostic(a.globalPositions[g.Id], "global `%s` must have constant initializer", g.Name)
-			return false
+			valid = false
+			continue
 		}
 
 		g.Initializer = initExpr
@@ -88,27 +93,31 @@ func (a *Analyzer) checkBodies() bool {
 			a.currentScope = parentScope
 			a.currentFunction = nil
 			if !ok {
-				return false
+				valid = false
+				continue
 			}
 			f.Body = checkedBody
 		}
 	}
 
-	return true
+	return valid
 }
 
+// checkBlock keeps going after a failed statement so every one of them gets reported
 func (a *Analyzer) checkBlock(block *parser.BlockStatement) (hir.Block, bool) {
 	checkBlock := hir.Block{}
+	valid := true
 
 	for _, s := range block.Statements {
 		stmt, ok := a.checkStmt(s)
 		if !ok {
-			return hir.Block{}, false
+			valid = false
+			continue
 		}
 		checkBlock.Statements = append(checkBlock.Statements, stmt)
 	}
 
-	return checkBlock, true
+	return checkBlock, valid
 }
 
 func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
@@ -173,11 +182,6 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		expr, ok := a.checkExpr(stmt.Right)
-		if !ok {
-			return nil, false
-		}
-
 		defType, ok := hir.ConvertVarType(stmt.Type, a.Symbols)
 		if !ok {
 			a.appendDiagnostic(stmt.Position(), "invalid type on local declaration for variable `%s`.", stmt.Name)
@@ -189,18 +193,26 @@ func (a *Analyzer) checkStmt(stmt parser.Statement) (hir.Stmt, bool) {
 			return nil, false
 		}
 
-		expr = coerce(expr, defType)
-		if defType != expr.Type() {
-			a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type(), defType)
-			return nil, false
+		// checked before the local is declared, so `def int32 x = x` still reports `x` as undefined
+		expr, exprOk := a.checkExpr(stmt.Right)
+		if exprOk {
+			expr = coerce(expr, defType)
+			if defType != expr.Type() {
+				a.appendDiagnostic(stmt.Position(), "initializer for local variable `%s` of type `%s` does not match declared type `%s`.", stmt.Name, expr.Type(), defType)
+				exprOk = false
+			}
 		}
 
+		// declared even when the initializer is bad, so later uses of it don't cascade into undefined errors
 		id := hir.LocalID(len(a.currentFunction.Locals))
 		a.currentFunction.Locals = append(a.currentFunction.Locals, hir.Local{
 			Name: stmt.Name.Value,
 			Type: defType,
 		})
 		a.currentScope.Symbols[stmt.Name.Value] = id
+		if !exprOk {
+			return nil, false
+		}
 		return &hir.LocalDeclaration{
 			ID:          id,
 			Initializer: expr,

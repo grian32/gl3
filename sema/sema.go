@@ -52,6 +52,8 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 	a.globalPositions = make([]*util.Position, a.importedGlobals)
 	a.globalInitializers = make([]parser.Expression, a.importedGlobals)
 	a.containsVariadic = false
+	// declared up front since goto can't jump over a declaration
+	publicOk := true
 
 	// pass 1.0 assigns ids to Functions/Structs/Globals
 	if !a.assignIDs(program) {
@@ -64,17 +66,16 @@ func (a *Analyzer) Analyze(program *parser.Program) (*hir.Program, []Diagnostic)
 	}
 
 	// pass 1.2 checks that exported declarations do not expose private types
-	if !a.checkPublicTypes() {
-		goto end
-	}
-
 	// pass 1.3 checks for parameters and global types being sized
+	// they don't depend on each other, so both always run and report
+	publicOk = a.checkPublicTypes()
 	if !a.checkSizedDeclarations() {
 		goto end
 	}
 
 	// pass 2.0 checks all expressions and produces the final hir
-	if !a.checkBodies() {
+	// visibility errors don't affect body checking, so they only stop the passes after it
+	if !a.checkBodies() || !publicOk {
 		goto end
 	}
 
