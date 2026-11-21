@@ -53,7 +53,25 @@ func main() {
 	exDefCmd.MarkFlagRequired("input")
 	exDefCmd.MarkFlagRequired("output")
 
+	var checkOpts cli.CheckOpts
+	checkCmd := &cobra.Command{
+		Use:   "check [files]",
+		Short: "Type-check gl3 files without compiling, printing diagnostics as JSON",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hasErrors, err := cli.RunCheckCmd(builtinFs, cmd.InOrStdin(), cmd.OutOrStdout(), args, &checkOpts)
+			if err != nil {
+				return err
+			}
+			if hasErrors {
+				os.Exit(1)
+			}
+			return nil
+		},
+	}
+	checkCmd.Flags().StringVar(&checkOpts.Path, "path", "", "Path of the source read from stdin, used for diagnostics and resolving relative imports")
+
 	rootCmd.AddCommand(buildCmd)
+	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(exDefCmd)
 
 	if err := fang.Execute(

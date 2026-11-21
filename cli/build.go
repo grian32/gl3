@@ -15,6 +15,7 @@ import (
 	"gl3/lexer"
 	"gl3/parser"
 	"gl3/sema"
+	"gl3/util"
 )
 
 type BuildOpts struct {
@@ -43,6 +44,7 @@ func RunBuildCmd(builtinFs embed.FS, files []string, opts *BuildOpts) error {
 		builtinFs: builtinFs,
 		compiled:  make(map[string]*compiledModule),
 		compiling: make(map[string]bool),
+		failed:    make(map[string]error),
 	}
 
 	for _, file := range files {
@@ -146,6 +148,32 @@ type buildContext struct {
 	compiled  map[string]*compiledModule
 	compiling map[string]bool
 	order     []*compiledModule
+	failed    map[string]error
+	// nil means print diagnostics to stdout and return import errors as-is.
+	report func(Diagnostic)
+}
+
+// moduleFailedError marks a module whose diagnostics were already reported.
+type moduleFailedError struct{ msg string }
+
+func (e *moduleFailedError) Error() string { return e.msg }
+
+func (ctx *buildContext) moduleFailed(absPath string, reason string) error {
+	err := &moduleFailedError{msg: fmt.Sprintf("%s: %s", absPath, reason)}
+	ctx.failed[absPath] = err
+	return err
+}
+
+func (ctx *buildContext) diagnose(file string, severity string, pos *util.Position, msg string) {
+	if ctx.report != nil {
+		ctx.report(newDiagnostic(file, severity, pos, msg))
+		return
+	}
+	if severity == severityWarning {
+		fmt.Printf("%s:%d:%d: warning: %s\n", file, pos.StartLine, pos.StartCol, msg)
+		return
+	}
+	fmt.Printf("%s:%d:%d: %s\n", file, pos.StartLine, pos.StartCol, msg)
 }
 
 func (ctx *buildContext) closeEmitters() {
@@ -196,6 +224,9 @@ func (ctx *buildContext) compileModule(absPath string, input string) (*compiledM
 	if module, ok := ctx.compiled[absPath]; ok {
 		return module, nil
 	}
+	if err, ok := ctx.failed[absPath]; ok {
+		return nil, err
+	}
 	if ctx.compiling[absPath] {
 		return nil, fmt.Errorf("import cycle involving %s", absPath)
 	}
@@ -206,13 +237,13 @@ func (ctx *buildContext) compileModule(absPath string, input string) (*compiledM
 	p := parser.New(l)
 	program := p.ParseProgram()
 	for _, w := range l.Warnings {
-		fmt.Printf("%s:%d:%d: warning: %s\n", absPath, w.Position.StartLine, w.Position.StartCol, w.Msg)
+		ctx.diagnose(absPath, severityWarning, w.Position, w.Msg)
 	}
 	if len(p.Errors) != 0 {
 		for _, parseErr := range p.Errors {
-			fmt.Printf("%s:%s\n", absPath, &parseErr)
+			ctx.diagnose(absPath, severityError, parseErr.Position, parseErr.Msg)
 		}
-		return nil, fmt.Errorf("%s: found parser errors", absPath)
+		return nil, ctx.moduleFailed(absPath, "found parser errors")
 	}
 
 	imports := newModuleImports()
@@ -224,10 +255,14 @@ func (ctx *buildContext) compileModule(absPath string, input string) (*compiledM
 		}
 
 		compModule, err := ctx.compileImport(absPath, imp.Path)
-		if err != nil {
-			return nil, fmt.Errorf("%s:%d:%d: import %q: %w", absPath, imp.Position().StartLine, imp.Position().StartCol, imp.Path, err)
+		if err == nil {
+			err = imports.add(compModule.Interface)
 		}
-		if err := imports.add(compModule.Interface); err != nil {
+		if err != nil {
+			if ctx.report != nil {
+				ctx.reportImportError(absPath, imp, err)
+				return nil, ctx.moduleFailed(absPath, "found import errors")
+			}
 			return nil, fmt.Errorf("%s:%d:%d: import %q: %w", absPath, imp.Position().StartLine, imp.Position().StartCol, imp.Path, err)
 		}
 	}
@@ -244,9 +279,9 @@ func (ctx *buildContext) compileModule(absPath string, input string) (*compiledM
 	analyzed, diagnostics := anal.Analyze(program)
 	if len(diagnostics) != 0 {
 		for _, d := range diagnostics {
-			fmt.Printf("%s:%d:%d: %s\n", absPath, d.Position.StartLine, d.Position.StartCol, d.Message)
+			ctx.diagnose(absPath, severityError, d.Position, d.Message)
 		}
-		return nil, fmt.Errorf("%s: found compiler errors", absPath)
+		return nil, ctx.moduleFailed(absPath, "found compiler errors")
 	}
 	module := &compiledModule{Program: analyzed, path: absPath}
 	for i, decl := range analyzed.Structs {
